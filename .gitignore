@@ -39,3 +39,10 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+#supabase
+schema.sql
+
+#app
+app.md
+development-plan.md
