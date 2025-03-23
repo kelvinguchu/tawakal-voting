@@ -10,8 +10,8 @@ export default function Navbar() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   return (
-    <nav className='fixed top-0 w-full bg-white/80 dark:bg-gray-950/80 backdrop-blur-md z-50 border-b border-gray-200 dark:border-gray-800'>
-      <div className='container mx-auto px-4 py-3 flex items-center justify-between'>
+    <nav className='fixed top-0 w-full bg-white/80 dark:bg-gray-950/80 backdrop-blur-md z-50 border-b border-gray-200 dark:border-gray-800 h-16'>
+      <div className='container mx-auto h-full px-4 py-3 flex items-center justify-between'>
         {/* Logo */}
         <Link href='/dashboard' className='flex items-center space-x-2'>
           <Image
@@ -53,7 +53,7 @@ export default function Navbar() {
 
       {/* Mobile Menu */}
       {isMobileMenuOpen && (
-        <div className='md:hidden bg-white dark:bg-gray-950 border-b border-gray-200 dark:border-gray-800'>
+        <div className='md:hidden absolute w-full bg-white dark:bg-gray-950 border-b border-gray-200 dark:border-gray-800 shadow-md'>
           <div className='container mx-auto px-4 py-3 space-y-3'>
             <Link
               href='/dashboard'

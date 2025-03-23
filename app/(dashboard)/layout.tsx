@@ -3,10 +3,11 @@
 import { useState, useEffect } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { User } from "@/lib/types/database";
-import { Sidebar } from "@/components/layout/sidebar";
+import { DashSidebar } from "@/components/layout/dash-sidebar";
 import { MobileHeader } from "@/components/layout/mobile-header";
 import Navbar from "@/components/layout/navbar";
 import Footer from "@/components/layout/footer";
+import { SidebarProvider } from "@/components/ui/sidebar";
 
 export default function DashboardLayout({
   children,
@@ -52,35 +53,40 @@ export default function DashboardLayout({
 
   return (
     <html lang='en'>
-      <body className='antialiased min-h-screen flex flex-col'>
+      <body className='antialiased flex flex-col min-h-screen'>
         {/* Navbar at the top */}
         <Navbar />
 
-        <div className='flex min-h-screen flex-col md:flex-row bg-gradient-to-br from-white to-slate-100 dark:from-gray-950 dark:to-black'>
-          <div className='absolute inset-0 bg-grid-pattern opacity-5 pointer-events-none'></div>
+        {/* Main content area - starts after the navbar height */}
+        <div className='flex flex-col md:flex-row flex-grow bg-gradient-to-br from-white to-slate-100 dark:from-gray-950 dark:to-black pt-16'>
+          <div className='absolute inset-x-0 top-16 bottom-0 bg-grid-pattern opacity-5 pointer-events-none'></div>
 
           {/* Decorative elements */}
-          <div className='absolute top-1/4 right-0 w-64 h-64 bg-tawakal-green/5 rounded-full blur-3xl pointer-events-none'></div>
-          <div className='absolute bottom-1/4 left-0 w-96 h-96 bg-tawakal-blue/5 rounded-full blur-3xl pointer-events-none'></div>
+          <div className='absolute top-1/3 right-0 w-64 h-64 bg-tawakal-green/5 rounded-full blur-3xl pointer-events-none'></div>
+          <div className='absolute bottom-1/3 left-0 w-96 h-96 bg-tawakal-blue/5 rounded-full blur-3xl pointer-events-none'></div>
 
-          {/* Mobile header with menu toggle */}
-          <MobileHeader
-            isMobileMenuOpen={isMobileMenuOpen}
-            toggleMobileMenu={toggleMobileMenu}
-          />
+          <SidebarProvider>
+            {/* Mobile header with menu toggle */}
+            <MobileHeader
+              isMobileMenuOpen={isMobileMenuOpen}
+              toggleMobileMenu={toggleMobileMenu}
+            />
 
-          {/* Sidebar component */}
-          <Sidebar
-            user={user}
-            signOut={signOut}
-            isMobileMenuOpen={isMobileMenuOpen}
-            setIsMobileMenuOpen={setIsMobileMenuOpen}
-          />
+            {/* Sidebar component */}
+            <DashSidebar
+              user={user}
+              signOut={signOut}
+              isMobileMenuOpen={isMobileMenuOpen}
+              setIsMobileMenuOpen={setIsMobileMenuOpen}
+            />
 
-          {/* Main content */}
-          <div className='relative flex-1 overflow-auto'>
-            <div className='container py-6 md:py-8 pt-16'>{children}</div>
-          </div>
+            {/* Main content */}
+            <div className='relative flex-1 overflow-auto'>
+              <div className='container py-6 md:py-8 md:pl-6 max-w-full'>
+                {children}
+              </div>
+            </div>
+          </SidebarProvider>
         </div>
 
         {/* Footer at the bottom */}
