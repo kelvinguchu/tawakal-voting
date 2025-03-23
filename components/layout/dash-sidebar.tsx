@@ -267,25 +267,6 @@ export function DashSidebar({
             </>
           )}
         </SidebarContent>
-
-        <SidebarFooter className='border-t p-4 flex-shrink-0'>
-          <div className='flex flex-col space-y-4'>
-            <div className='truncate'>
-              <p className='font-medium truncate'>
-                {user?.first_name} {user?.last_name}
-              </p>
-              <p className='text-xs text-muted-foreground truncate'>
-                {user?.email}
-              </p>
-            </div>
-            <SidebarMenuButton
-              onClick={signOut}
-              className='w-full justify-start text-tawakal-red hover:bg-red-50 dark:hover:bg-red-900/20'>
-              <LogOut className='h-5 w-5 mr-2' />
-              <span>Sign Out</span>
-            </SidebarMenuButton>
-          </div>
-        </SidebarFooter>
       </Sidebar>
     </>
   );
