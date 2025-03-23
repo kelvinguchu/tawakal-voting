@@ -21,13 +21,11 @@ import { Input } from "@/components/ui/input";
 import {
   Card,
   CardContent,
-  CardDescription,
   CardFooter,
   CardHeader,
-  CardTitle,
 } from "@/components/ui/card";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { AlertCircle } from "lucide-react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { AlertCircle, Lock, Mail } from "lucide-react";
 
 type LoginFormValues = z.infer<typeof loginSchema>;
 
@@ -69,18 +67,14 @@ export function LoginForm() {
   }
 
   return (
-    <Card className='w-full max-w-md mx-auto'>
-      <CardHeader>
-        <CardTitle className='text-2xl'>Sign In</CardTitle>
-        <CardDescription>
-          Enter your credentials to access your account
-        </CardDescription>
+    <Card className='w-full max-w-md mx-auto bg-white/70 dark:bg-black/40 backdrop-blur-sm border border-white/20 shadow-lg'>
+      <CardHeader className='space-y-1 text-center'>
+        <h2 className='text-2xl font-bold'>Sign In</h2>
       </CardHeader>
       <CardContent>
         {error && (
           <Alert variant='destructive' className='mb-4'>
             <AlertCircle className='h-4 w-4' />
-            <AlertTitle>Error</AlertTitle>
             <AlertDescription>{error}</AlertDescription>
           </Alert>
         )}
@@ -93,11 +87,15 @@ export function LoginForm() {
                 <FormItem>
                   <FormLabel>Email</FormLabel>
                   <FormControl>
-                    <Input
-                      placeholder='example@company.com'
-                      type='email'
-                      {...field}
-                    />
+                    <div className='relative'>
+                      <Mail className='absolute left-3 top-2.5 h-5 w-5 text-muted-foreground' />
+                      <Input
+                        placeholder='Enter your email'
+                        type='email'
+                        className='pl-10'
+                        {...field}
+                      />
+                    </div>
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -110,20 +108,31 @@ export function LoginForm() {
                 <FormItem>
                   <FormLabel>Password</FormLabel>
                   <FormControl>
-                    <Input placeholder='••••••••' type='password' {...field} />
+                    <div className='relative'>
+                      <Lock className='absolute left-3 top-2.5 h-5 w-5 text-muted-foreground' />
+                      <Input
+                        placeholder='Enter your password'
+                        type='password'
+                        className='pl-10'
+                        {...field}
+                      />
+                    </div>
                   </FormControl>
                   <FormMessage />
                 </FormItem>
               )}
             />
-            <Button type='submit' className='w-full' disabled={isLoading}>
+            <Button
+              type='submit'
+              className='w-full bg-gradient-to-r from-tawakal-green to-tawakal-blue hover:from-tawakal-blue hover:to-tawakal-green transition-all duration-300'
+              disabled={isLoading}>
               {isLoading ? "Signing in..." : "Sign In"}
             </Button>
           </form>
         </Form>
       </CardContent>
-      <CardFooter className='flex justify-center text-sm'>
-        Please contact an administrator if you need an account
+      <CardFooter className='text-center text-sm text-muted-foreground'>
+        Contact admin for access
       </CardFooter>
     </Card>
   );
