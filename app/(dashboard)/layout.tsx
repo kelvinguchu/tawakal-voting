@@ -65,7 +65,7 @@ export default function DashboardLayout({
 
   return (
     <SidebarProvider>
-      <div className='flex flex-col h-screen'>
+      <div className='flex flex-col h-screen w-full'>
         <Navbar
           user={user}
           signOut={signOut}
@@ -73,14 +73,16 @@ export default function DashboardLayout({
           setIsMobileMenuOpen={setIsMobileMenuOpen}
         />
 
-        <div className='flex flex-grow mt-16'>
+        <div className='flex flex-grow mt-16 w-full'>
           <DashSidebar
             user={user}
             signOut={signOut}
             isMobileMenuOpen={isMobileMenuOpen}
             setIsMobileMenuOpen={setIsMobileMenuOpen}
           />
-          <main className='flex-1 overflow-y-auto p-4 md:p-6'>{children}</main>
+          <main className='flex-1 overflow-y-auto p-4 md:p-6 w-full max-w-full'>
+            {children}
+          </main>
         </div>
       </div>
     </SidebarProvider>

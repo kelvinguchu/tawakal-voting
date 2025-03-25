@@ -19,6 +19,7 @@ import {
   PlusCircle,
   UserCircle,
   Plus,
+  UserPlus,
 } from "lucide-react";
 import {
   Sidebar,
@@ -33,6 +34,7 @@ import {
   SidebarSeparator,
 } from "@/components/ui/sidebar";
 import { Button } from "@/components/ui/button";
+import { AddAccountDialog } from "@/components/admin/add-account-dialog";
 
 interface DashSidebarProps {
   user: User | null;
@@ -49,6 +51,7 @@ export function DashSidebar({
 }: DashSidebarProps) {
   const pathname = usePathname();
   const supabase = createClient();
+  const [isAddAccountDialogOpen, setIsAddAccountDialogOpen] = useState(false);
 
   // Navigation items with predefined color classes
   const navItems = [
@@ -129,7 +132,7 @@ export function DashSidebar({
         variant='sidebar'
         collapsible='icon'
         className={cn(
-          "w-full md:w-64 z-20 transition-all duration-300 ease-in-out overflow-hidden flex flex-col",
+          "w-60 md:w-60 z-20 transition-all duration-300 ease-in-out overflow-hidden flex flex-col",
           isMobileMenuOpen ? "block" : "hidden md:block"
         )}
         style={{
@@ -188,6 +191,17 @@ export function DashSidebar({
                 <SidebarGroupLabel className='px-3'>
                   Administration
                 </SidebarGroupLabel>
+
+                {/* Add Account Button */}
+                <div className='px-3 py-2'>
+                  <Button
+                    className='w-full bg-tawakal-green hover:bg-tawakal-green/90 text-white'
+                    onClick={() => setIsAddAccountDialogOpen(true)}>
+                    <UserPlus size={16} className='mr-2' />
+                    Add Account
+                  </Button>
+                </div>
+
                 <SidebarMenu>
                   {adminNavItems.map((item) => (
                     <SidebarMenuItem key={item.href}>
@@ -223,6 +237,12 @@ export function DashSidebar({
           )}
         </SidebarContent>
       </Sidebar>
+
+      {/* Add Account Dialog */}
+      <AddAccountDialog
+        open={isAddAccountDialogOpen}
+        onOpenChange={setIsAddAccountDialogOpen}
+      />
     </>
   );
 }

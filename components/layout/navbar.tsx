@@ -30,7 +30,7 @@ export default function Navbar({
 }: NavbarProps) {
   return (
     <nav className='fixed top-0 w-full bg-white/80 dark:bg-gray-950/80 backdrop-blur-md z-50 border-b border-gray-200 dark:border-gray-800 h-16'>
-      <div className='container mx-auto h-full px-4 py-3 flex items-center justify-between'>
+      <div className='w-full h-full px-4 py-3 flex items-center justify-between'>
         {/* Logo */}
         <div className='flex items-center'>
           {/* Mobile Menu Button */}

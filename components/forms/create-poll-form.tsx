@@ -47,9 +47,7 @@ const formSchema = z.object({
   title: z.string().min(3, {
     message: "Title must be at least 3 characters.",
   }),
-  description: z.string().min(10, {
-    message: "Description must be at least 10 characters.",
-  }),
+  description: z.string().optional().default(""),
   status: z.enum(["draft", "scheduled", "active"]),
   startDate: z.date({
     required_error: "Start date is required.",
@@ -91,9 +89,14 @@ const formSchema = z.object({
 interface CreatePollFormProps {
   onSuccess?: () => void;
   userId?: string;
+  userRole?: string;
 }
 
-export function CreatePollForm({ onSuccess, userId }: CreatePollFormProps) {
+export function CreatePollForm({
+  onSuccess,
+  userId,
+  userRole,
+}: CreatePollFormProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [mediaTab, setMediaTab] = useState<string>("link");
   const [documentInputType, setDocumentInputType] = useState<"upload" | "link">(
@@ -109,7 +112,10 @@ export function CreatePollForm({ onSuccess, userId }: CreatePollFormProps) {
       status: "active",
       startTime: "12:00",
       duration: 5,
-      options: [{ text: "", image: undefined, imageDescription: "" }],
+      options: [
+        { text: "", image: undefined, imageDescription: "" },
+        { text: "", image: undefined, imageDescription: "" },
+      ],
       media: [],
     },
   });
@@ -137,6 +143,10 @@ export function CreatePollForm({ onSuccess, userId }: CreatePollFormProps) {
     file: File | undefined,
     description: string = ""
   ) => {
+    console.log(
+      `Option image change for index ${index}:`,
+      file ? file.name : "No file"
+    );
     const options = [...form.getValues("options")];
     if (options[index]) {
       options[index] = {
@@ -144,6 +154,11 @@ export function CreatePollForm({ onSuccess, userId }: CreatePollFormProps) {
         image: file,
         imageDescription: description,
       };
+      console.log(`Updated option ${index}:`, {
+        text: options[index].text,
+        hasImage: !!options[index].image,
+        imageDescription: options[index].imageDescription,
+      });
       form.setValue("options", options);
     }
   };
@@ -181,6 +196,69 @@ export function CreatePollForm({ onSuccess, userId }: CreatePollFormProps) {
       return;
     }
 
+    // Check if user is admin
+    if (userRole !== "admin") {
+      toast.error("Only administrators can create polls");
+      return;
+    }
+
+    // Console logs to debug what's being submitted
+    console.log("Submitting form with values:", {
+      title: values.title,
+      description: values.description || "",
+      status: values.status,
+      startDate: values.startDate,
+      startTime: values.startTime,
+      duration: values.duration,
+      optionsCount: values.options.length,
+      mediaCount: values.media?.length || 0,
+    });
+    console.log("User ID:", userId);
+    console.log("User role:", userRole);
+
+    // Check for file attachments (options with images and media items with files)
+    const optionsWithImages = values.options.filter(
+      (opt) => opt.image instanceof File
+    );
+    const mediaWithFiles = (values.media || []).filter(
+      (item) => item.file instanceof File
+    );
+
+    console.log("Options with images:", optionsWithImages.length);
+    if (optionsWithImages.length > 0) {
+      optionsWithImages.forEach((opt, idx) => {
+        console.log(`Option image ${idx}:`, {
+          filename: opt.image?.name,
+          size: opt.image?.size,
+          type: opt.image?.type,
+        });
+      });
+    }
+
+    console.log("Media items with files:", mediaWithFiles.length);
+    if (mediaWithFiles.length > 0) {
+      mediaWithFiles.forEach((item, idx) => {
+        console.log(`Media file ${idx}:`, {
+          type: item.type,
+          filename: item.file?.name,
+          size: item.file?.size,
+          fileType: item.file?.type,
+        });
+      });
+    }
+
+    // Ensure we have at least 2 valid options
+    const validOptions = values.options.filter(
+      (option) => option.text.trim().length > 0
+    );
+    console.log("Valid options count:", validOptions.length);
+    console.log("Valid options:", validOptions);
+
+    if (validOptions.length < 2) {
+      toast.error("You must provide at least 2 valid options");
+      return;
+    }
+
     setIsSubmitting(true);
 
     try {
@@ -194,112 +272,43 @@ export function CreatePollForm({ onSuccess, userId }: CreatePollFormProps) {
         values.duration
       );
 
-      // Create the poll
-      const { data: poll, error: pollError } = await supabase
-        .from("polls")
-        .insert({
+      console.log("Poll data to insert:", {
+        title: values.title,
+        description: values.description || "",
+        start_time: startDateTime.toISOString(),
+        end_time: endDateTime.toISOString(),
+        created_by: userId,
+        status: "draft",
+      });
+
+      // Use server-side API to create the poll to bypass RLS issues
+      // We'll create an API route for this
+      const response = await fetch("/api/polls/create", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
           title: values.title,
-          description: values.description,
+          description: values.description || "",
           start_time: startDateTime.toISOString(),
           end_time: endDateTime.toISOString(),
           created_by: userId,
+          validOptions,
           status: values.status,
-        })
-        .select()
-        .single();
+          mediaItems: values.media,
+        }),
+      });
 
-      if (pollError) {
-        throw pollError;
+      if (!response.ok) {
+        const errorData = await response.json();
+        console.error("API error:", errorData);
+        throw new Error(errorData.message || "Failed to create poll");
       }
 
-      // Add poll options
-      for (let i = 0; i < values.options.length; i++) {
-        const option = values.options[i];
+      const { pollId } = await response.json();
 
-        // Insert the option
-        const { data: optionData, error: optionError } = await supabase
-          .from("poll_options")
-          .insert({
-            poll_id: poll.id,
-            option_text: option.text,
-          })
-          .select()
-          .single();
-
-        if (optionError) {
-          throw optionError;
-        }
-
-        // If there's an image for this option, upload it
-        if (option.image) {
-          const fileExt = option.image.name.split(".").pop();
-          const fileName = `${poll.id}/options/${
-            optionData.id
-          }_${Date.now()}.${fileExt}`;
-
-          // Upload the image to Storage
-          const { error: uploadError } = await supabase.storage
-            .from("vote-media")
-            .upload(fileName, option.image);
-
-          if (uploadError) {
-            console.error("Error uploading option image:", uploadError);
-            // Continue even if image upload fails
-            continue;
-          }
-
-          // Link the image to the option
-          const { error: optionMediaError } = await supabase
-            .from("option_media")
-            .insert({
-              option_id: optionData.id,
-              media_type: "image",
-              storage_path: fileName,
-              description: option.imageDescription || null,
-            });
-
-          if (optionMediaError) {
-            console.error("Error linking image to option:", optionMediaError);
-          }
-        }
-      }
-
-      // Handle poll media attachments if any
-      if (values.media && values.media.length > 0) {
-        // Process each media item
-        for (const item of values.media) {
-          if (item.type === "link" && item.url) {
-            // Add link directly to poll_media table
-            await supabase.from("poll_media").insert({
-              poll_id: poll.id,
-              media_type: "link",
-              media_url: item.url,
-              description: item.description || null,
-            });
-          } else if (
-            (item.type === "image" || item.type === "document") &&
-            item.file
-          ) {
-            // Upload file to storage
-            const fileExt = item.file.name.split(".").pop();
-            const fileName = `${poll.id}/${Date.now()}.${fileExt}`;
-            const { error: uploadError, data: uploadData } =
-              await supabase.storage
-                .from("vote-media")
-                .upload(fileName, item.file);
-
-            if (!uploadError && uploadData) {
-              // Add file reference to poll_media table
-              await supabase.from("poll_media").insert({
-                poll_id: poll.id,
-                media_type: item.type,
-                storage_path: fileName,
-                description: item.description || null,
-              });
-            }
-          }
-        }
-      }
+      console.log("Poll created successfully with ID:", pollId);
 
       toast.success("Poll created successfully!");
       form.reset();
@@ -311,7 +320,19 @@ export function CreatePollForm({ onSuccess, userId }: CreatePollFormProps) {
       }
     } catch (error) {
       console.error("Error creating poll:", error);
-      toast.error("Failed to create poll. Please try again.");
+      // Provide more detailed error message based on the error
+      if (error && typeof error === "object" && "message" in error) {
+        const errorMessage = (error as any).message;
+        if (errorMessage.includes("at least 2 options")) {
+          toast.error(
+            "Poll creation failed: You must have at least 2 options for an active poll."
+          );
+        } else {
+          toast.error(`Failed to create poll: ${errorMessage}`);
+        }
+      } else {
+        toast.error("Failed to create poll. Please try again.");
+      }
     } finally {
       setIsSubmitting(false);
     }
@@ -347,7 +368,10 @@ export function CreatePollForm({ onSuccess, userId }: CreatePollFormProps) {
             render={({ field }) => (
               <FormItem>
                 <FormLabel className='text-tawakal-blue font-medium'>
-                  Description
+                  Description{" "}
+                  <span className='text-muted-foreground text-xs'>
+                    (optional)
+                  </span>
                 </FormLabel>
                 <FormControl>
                   <Textarea

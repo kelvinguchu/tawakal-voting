@@ -192,3 +192,9 @@
 .transition-all-300 {
   @apply transition-all duration-300;
 }
+
+@layer utilities {
+  .min-h-95vh {
+    min-height: 95vh;
+  }
+}

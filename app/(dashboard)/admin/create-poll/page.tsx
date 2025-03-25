@@ -85,7 +85,7 @@ export default async function CreatePollPage() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <CreatePollForm userId={userData.id} />
+          <CreatePollForm userId={userData.id} userRole={userData.role} />
         </CardContent>
       </Card>
     </div>
