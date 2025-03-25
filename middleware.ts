@@ -75,7 +75,6 @@ export async function middleware(request: NextRequest) {
 
   // Check if session exists (user is authenticated)
   const hasSession = !!user;
-  console.log("Session exists:", hasSession);
 
   // Fix: More precise auth route pattern matching
   // Check if it's directly /login or in the auth group route
@@ -85,19 +84,14 @@ export async function middleware(request: NextRequest) {
     request.nextUrl.pathname.includes("/(auth)") ||
     request.nextUrl.pathname.includes("/auth/");
 
-  console.log("Is auth route:", isAuthRoute);
-
   // Static assets and API routes that should be accessible without auth
   const isStaticOrApiRoute =
     request.nextUrl.pathname.startsWith("/_next") ||
     request.nextUrl.pathname.includes(".") || // For static files
     request.nextUrl.pathname.startsWith("/api/");
 
-  console.log("Is static or API route:", isStaticOrApiRoute);
-
   // If user is authenticated and visiting the home page, redirect to dashboard
   if (hasSession && request.nextUrl.pathname === "/") {
-    console.log("Redirecting authenticated user from home to dashboard");
     const redirectUrl = new URL("/dashboard", request.url);
     const redirectResponse = NextResponse.redirect(redirectUrl);
     // Add cache control header to prevent middleware caching
@@ -109,7 +103,6 @@ export async function middleware(request: NextRequest) {
 
   // Auth check for protected routes
   if (!hasSession && !isAuthRoute && !isStaticOrApiRoute) {
-    console.log("Redirecting to login (no session)");
     const redirectUrl = new URL("/login", request.url);
     const redirectResponse = NextResponse.redirect(redirectUrl);
     // Add cache control header to prevent middleware caching
@@ -121,7 +114,6 @@ export async function middleware(request: NextRequest) {
 
   // Redirect logged in users away from auth pages
   if (hasSession && isAuthRoute) {
-    console.log("Redirecting to dashboard (has session)");
     const redirectUrl = new URL("/dashboard", request.url);
     const redirectResponse = NextResponse.redirect(redirectUrl);
     // Add cache control header to prevent middleware caching
@@ -142,7 +134,6 @@ export async function middleware(request: NextRequest) {
 
     if (error || userData.role !== "admin") {
       // Not an admin, redirect to user dashboard
-      console.log("Redirecting to dashboard (not admin)");
       const redirectUrl = new URL("/dashboard", request.url);
       const redirectResponse = NextResponse.redirect(redirectUrl);
       // Add cache control header to prevent middleware caching
@@ -158,7 +149,6 @@ export async function middleware(request: NextRequest) {
   // Force no store to prevent browser caching
   response.headers.set("Cache-Control", "no-store, max-age=0");
 
-  console.log("Middleware complete, returning response");
   return response;
 }
 
