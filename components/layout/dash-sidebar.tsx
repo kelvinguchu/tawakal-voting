@@ -19,7 +19,6 @@ import {
   PlusCircle,
   UserCircle,
   Plus,
-  X,
 } from "lucide-react";
 import {
   Sidebar,
@@ -34,22 +33,6 @@ import {
   SidebarSeparator,
 } from "@/components/ui/sidebar";
 import { Button } from "@/components/ui/button";
-import {
-  Drawer,
-  DrawerClose,
-  DrawerContent,
-  DrawerDescription,
-  DrawerHeader,
-  DrawerTitle,
-  DrawerTrigger,
-} from "@/components/ui/drawer";
-import { CreatePollForm } from "@/components/forms/create-poll-form";
-import { Geist_Mono } from "next/font/google";
-
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
-});
 
 interface DashSidebarProps {
   user: User | null;
@@ -156,42 +139,14 @@ export function DashSidebar({
         <SidebarContent className='pt-4 px-2 overflow-y-auto overflow-x-hidden flex-grow'>
           {/* Create Poll Button */}
           <div className='px-3 py-2'>
-            <Drawer>
-              <DrawerTrigger asChild>
-                <Button className='w-full bg-tawakal-green hover:bg-tawakal-green/90 text-white'>
-                  <Plus size={16} className='mr-2' />
-                  Create Poll
-                </Button>
-              </DrawerTrigger>
-              <DrawerContent
-                className={`${geistMono.className} min-h-[95vh] flex flex-col`}>
-                <DrawerHeader className='py-2 flex-shrink-0'>
-                  <DrawerTitle className={`text-tawakal-blue text-xl`}>
-                    Create New Poll
-                  </DrawerTitle>
-                  <DrawerDescription className='text-sm'>
-                    Add a new poll for users to vote on
-                  </DrawerDescription>
-                </DrawerHeader>
-                <div className='px-4 flex-1 overflow-hidden'>
-                  <CreatePollForm
-                    onSuccess={() => {
-                      const closeButton = document.querySelector(
-                        '[data-slot="drawer-close"]'
-                      );
-                      if (closeButton instanceof HTMLElement) {
-                        closeButton.click();
-                      }
-                    }}
-                    userId={user?.id}
-                  />
-                </div>
-                <DrawerClose className='absolute right-4 top-4 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none'>
-                  <X className='h-4 w-4' />
-                  <span className='sr-only'>Close</span>
-                </DrawerClose>
-              </DrawerContent>
-            </Drawer>
+            <Button
+              asChild
+              className='w-full bg-tawakal-green hover:bg-tawakal-green/90 text-white'>
+              <Link href='/admin/create-poll'>
+                <Plus size={16} className='mr-2' />
+                Create Poll
+              </Link>
+            </Button>
           </div>
 
           <SidebarGroup>

@@ -64,9 +64,17 @@ const formSchema = z.object({
     .min(1, {
       message: "Duration must be at least 1 hour.",
     }),
-  options: z.array(z.string()).min(2, {
-    message: "At least 2 options are required.",
-  }),
+  options: z
+    .array(
+      z.object({
+        text: z.string().min(1, "Option text is required"),
+        image: z.instanceof(File).optional(),
+        imageDescription: z.string().optional(),
+      })
+    )
+    .min(2, {
+      message: "At least 2 options are required.",
+    }),
   media: z
     .array(
       z.object({
@@ -81,7 +89,7 @@ const formSchema = z.object({
 });
 
 interface CreatePollFormProps {
-  onSuccess: () => void;
+  onSuccess?: () => void;
   userId?: string;
 }
 
@@ -101,14 +109,17 @@ export function CreatePollForm({ onSuccess, userId }: CreatePollFormProps) {
       status: "active",
       startTime: "12:00",
       duration: 5,
-      options: ["", ""],
+      options: [{ text: "", image: undefined, imageDescription: "" }],
       media: [],
     },
   });
 
   const addOption = () => {
     const options = form.getValues("options");
-    form.setValue("options", [...options, ""]);
+    form.setValue("options", [
+      ...options,
+      { text: "", image: undefined, imageDescription: "" },
+    ]);
   };
 
   const removeOption = (index: number) => {
@@ -118,6 +129,23 @@ export function CreatePollForm({ onSuccess, userId }: CreatePollFormProps) {
       "options",
       options.filter((_, i) => i !== index)
     );
+  };
+
+  // Handle option image upload
+  const handleOptionImageChange = (
+    index: number,
+    file: File | undefined,
+    description: string = ""
+  ) => {
+    const options = [...form.getValues("options")];
+    if (options[index]) {
+      options[index] = {
+        ...options[index],
+        image: file,
+        imageDescription: description,
+      };
+      form.setValue("options", options);
+    }
   };
 
   const addMedia = (
@@ -185,20 +213,58 @@ export function CreatePollForm({ onSuccess, userId }: CreatePollFormProps) {
       }
 
       // Add poll options
-      const pollOptions = values.options.map((option) => ({
-        poll_id: poll.id,
-        option_text: option,
-      }));
+      for (let i = 0; i < values.options.length; i++) {
+        const option = values.options[i];
 
-      const { error: optionsError } = await supabase
-        .from("poll_options")
-        .insert(pollOptions);
+        // Insert the option
+        const { data: optionData, error: optionError } = await supabase
+          .from("poll_options")
+          .insert({
+            poll_id: poll.id,
+            option_text: option.text,
+          })
+          .select()
+          .single();
 
-      if (optionsError) {
-        throw optionsError;
+        if (optionError) {
+          throw optionError;
+        }
+
+        // If there's an image for this option, upload it
+        if (option.image) {
+          const fileExt = option.image.name.split(".").pop();
+          const fileName = `${poll.id}/options/${
+            optionData.id
+          }_${Date.now()}.${fileExt}`;
+
+          // Upload the image to Storage
+          const { error: uploadError } = await supabase.storage
+            .from("vote-media")
+            .upload(fileName, option.image);
+
+          if (uploadError) {
+            console.error("Error uploading option image:", uploadError);
+            // Continue even if image upload fails
+            continue;
+          }
+
+          // Link the image to the option
+          const { error: optionMediaError } = await supabase
+            .from("option_media")
+            .insert({
+              option_id: optionData.id,
+              media_type: "image",
+              storage_path: fileName,
+              description: option.imageDescription || null,
+            });
+
+          if (optionMediaError) {
+            console.error("Error linking image to option:", optionMediaError);
+          }
+        }
       }
 
-      // Handle media attachments if any
+      // Handle poll media attachments if any
       if (values.media && values.media.length > 0) {
         // Process each media item
         for (const item of values.media) {
@@ -237,7 +303,12 @@ export function CreatePollForm({ onSuccess, userId }: CreatePollFormProps) {
 
       toast.success("Poll created successfully!");
       form.reset();
-      onSuccess();
+      if (onSuccess) {
+        onSuccess();
+      } else {
+        // Redirect to polls page if no onSuccess handler
+        window.location.href = "/polls";
+      }
     } catch (error) {
       console.error("Error creating poll:", error);
       toast.error("Failed to create poll. Please try again.");
@@ -248,10 +319,8 @@ export function CreatePollForm({ onSuccess, userId }: CreatePollFormProps) {
 
   return (
     <Form {...form}>
-      <form
-        onSubmit={form.handleSubmit(onSubmit)}
-        className='flex flex-col h-[calc(95vh-116px)] overflow-hidden'>
-        <div className='flex-1 overflow-y-auto px-2 py-4 space-y-6'>
+      <form onSubmit={form.handleSubmit(onSubmit)} className='flex flex-col'>
+        <div className='space-y-6'>
           <FormField
             control={form.control}
             name='title'
@@ -454,34 +523,93 @@ export function CreatePollForm({ onSuccess, userId }: CreatePollFormProps) {
               </Button>
             </div>
 
-            <div className='space-y-3 max-h-[200px] overflow-y-auto pr-1 pb-1'>
-              {form.watch("options").map((_, index) => (
-                <div key={index} className='flex gap-2'>
-                  <FormField
-                    control={form.control}
-                    name={`options.${index}`}
-                    render={({ field }) => (
-                      <FormItem className='flex-1'>
-                        <FormControl>
-                          <Input
-                            placeholder={`Option ${index + 1}`}
-                            {...field}
-                            className='border-tawakal-blue/30 focus-visible:ring-tawakal-blue/50'
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <Button
-                    type='button'
-                    variant='ghost'
-                    size='icon'
-                    onClick={() => removeOption(index)}
-                    disabled={form.watch("options").length <= 2}
-                    className='text-tawakal-red/70 hover:text-tawakal-red hover:bg-tawakal-red/10'>
-                    <Trash2 className='h-4 w-4' />
-                  </Button>
+            <div className='space-y-3 pr-1 pb-1'>
+              {form.watch("options").map((option, index) => (
+                <div key={index} className='space-y-2'>
+                  <div className='flex gap-2'>
+                    <FormField
+                      control={form.control}
+                      name={`options.${index}.text`}
+                      render={({ field }) => (
+                        <FormItem className='flex-1'>
+                          <FormControl>
+                            <Input
+                              placeholder={`Option ${index + 1}`}
+                              {...field}
+                              className='border-tawakal-blue/30 focus-visible:ring-tawakal-blue/50'
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <Button
+                      type='button'
+                      variant='ghost'
+                      size='icon'
+                      onClick={() => removeOption(index)}
+                      disabled={form.watch("options").length <= 2}
+                      className='text-tawakal-red/70 hover:text-tawakal-red hover:bg-tawakal-red/10'>
+                      <Trash2 className='h-4 w-4' />
+                    </Button>
+                  </div>
+
+                  {/* Option image upload */}
+                  <div className='flex items-center gap-2 ml-2 mt-1'>
+                    <div className='flex-1'>
+                      <div className='flex items-center mb-1'>
+                        <span className='text-xs text-tawakal-blue/60 font-medium'>
+                          Option Image (e.g., candidate photo)
+                        </span>
+                      </div>
+                      <div className='flex gap-2'>
+                        <Input
+                          type='file'
+                          accept='image/*'
+                          id={`option-image-${index}`}
+                          className='flex-1 text-xs border-tawakal-blue/30 focus-visible:ring-tawakal-blue/50'
+                          onChange={(e) => {
+                            const file = e.target.files?.[0];
+                            handleOptionImageChange(
+                              index,
+                              file,
+                              form.getValues(
+                                `options.${index}.imageDescription`
+                              ) || ""
+                            );
+                          }}
+                        />
+                        <Input
+                          placeholder='Image description'
+                          value={option.imageDescription || ""}
+                          onChange={(e) => {
+                            handleOptionImageChange(
+                              index,
+                              option.image,
+                              e.target.value
+                            );
+                          }}
+                          className='flex-1 text-xs border-tawakal-blue/30 focus-visible:ring-tawakal-blue/50'
+                        />
+                      </div>
+                      {option.image && (
+                        <div className='flex items-center mt-1 text-xs text-tawakal-green'>
+                          <Upload className='h-3 w-3 mr-1' />
+                          <span className='truncate'>{option.image.name}</span>
+                          <Button
+                            type='button'
+                            variant='ghost'
+                            size='sm'
+                            className='ml-auto h-5 w-5 p-0 text-tawakal-red/70'
+                            onClick={() =>
+                              handleOptionImageChange(index, undefined, "")
+                            }>
+                            <Trash2 className='h-3 w-3' />
+                          </Button>
+                        </div>
+                      )}
+                    </div>
+                  </div>
                 </div>
               ))}
             </div>
@@ -714,7 +842,7 @@ export function CreatePollForm({ onSuccess, userId }: CreatePollFormProps) {
                 <h4 className='text-sm font-medium mb-2 text-tawakal-blue'>
                   Added Attachments:
                 </h4>
-                <div className='space-y-2 max-h-[150px] overflow-y-auto pr-1'>
+                <div className='space-y-2 pr-1'>
                   {form.watch("media").map((item, index) => (
                     <div
                       key={index}
@@ -752,17 +880,12 @@ export function CreatePollForm({ onSuccess, userId }: CreatePollFormProps) {
           </div>
         </div>
 
-        <div className='flex justify-end gap-3 p-4 border-t border-border mt-auto'>
+        <div className='flex justify-end gap-3 p-4 border-t border-border mt-6'>
           <Button
             type='button'
             variant='outline'
             onClick={() => {
-              const closeButton = document.querySelector(
-                '[data-slot="drawer-close"]'
-              );
-              if (closeButton instanceof HTMLElement) {
-                closeButton.click();
-              }
+              window.history.back();
             }}
             className='border border-tawakal-red/50 text-tawakal-red hover:bg-tawakal-red/10'>
             Cancel
