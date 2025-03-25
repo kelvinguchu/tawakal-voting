@@ -36,11 +36,18 @@ export function AuthProvider({ children }: AuthProviderProps) {
   const supabase = createClient();
 
   useEffect(() => {
-    // Check active session
+    // Check active session using getUser instead of getSession for security
     const checkSession = async () => {
       try {
-        const { data } = await supabase.auth.getSession();
-        setAuthUser(data.session?.user || null);
+        const { data, error } = await supabase.auth.getUser();
+
+        if (error) {
+          console.error("Error checking user auth:", error);
+          setAuthUser(null);
+          return;
+        }
+
+        setAuthUser(data.user || null);
       } catch (error) {
         console.error("Error checking session:", error);
         setAuthUser(null);

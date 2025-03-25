@@ -17,5 +17,9 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  return <div className={geistMono.className}>{children}</div>;
+  return (
+    <html lang='en'>
+      <body className={geistMono.className}>{children}</body>
+    </html>
+  );
 }

@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { User } from "@/lib/types/database";
 import { MobileHeader } from "@/components/layout/mobile-header";
@@ -22,19 +21,27 @@ export default function DashboardLayout({
   useEffect(() => {
     async function getUser() {
       const {
-        data: { session },
-      } = await supabase.auth.getSession();
+        data: { user: authUser },
+        error: authError,
+      } = await supabase.auth.getUser();
 
-      if (!session) {
+      if (authError || !authUser) {
+        console.error("Authentication error:", authError);
         window.location.href = "/login";
         return;
       }
 
-      const { data: userData } = await supabase
+      const { data: userData, error: userError } = await supabase
         .from("users")
         .select("*")
-        .eq("id", session.user.id)
+        .eq("id", authUser.id)
         .single();
+
+      if (userError || !userData) {
+        console.error("User data error:", userError);
+        window.location.href = "/login";
+        return;
+      }
 
       setUser(userData);
     }
@@ -46,6 +53,8 @@ export default function DashboardLayout({
     const { error } = await supabase.auth.signOut();
     if (!error) {
       window.location.href = "/login";
+    } else {
+      console.error("Sign out error:", error);
     }
   };
 

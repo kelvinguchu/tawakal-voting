@@ -22,9 +22,12 @@ export default async function ProfilePage() {
 
   // Check if the user is authenticated
   const {
-    data: { session },
-  } = await supabase.auth.getSession();
-  if (!session) {
+    data: { user },
+    error: authError,
+  } = await supabase.auth.getUser();
+
+  if (authError || !user) {
+    console.error("Authentication error:", authError);
     redirect("/login");
   }
 
@@ -32,21 +35,21 @@ export default async function ProfilePage() {
   const { data: userData, error: userError } = await supabase
     .from("users")
     .select("*")
-    .eq("id", session.user.id)
+    .eq("id", user.id)
     .single();
 
   // Fetch notification preferences
   const { data: notifPrefs, error: notifError } = await supabase
     .from("notification_preferences")
     .select("*")
-    .eq("user_id", session.user.id)
+    .eq("user_id", user.id)
     .single();
 
   // Fetch vote count
   const { count: voteCount, error: voteCountError } = await supabase
     .from("votes")
     .select("*", { count: "exact", head: true })
-    .eq("user_id", session.user.id);
+    .eq("user_id", user.id);
 
   if (userError) {
     console.error("Error fetching user data:", userError);

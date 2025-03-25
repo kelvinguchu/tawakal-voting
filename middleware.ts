@@ -2,9 +2,6 @@ import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
 export async function middleware(request: NextRequest) {
-  // Debug log to help troubleshoot
-  console.log("Middleware running for path:", request.nextUrl.pathname);
-
   // Create a response with the pathname header
   let response = NextResponse.next({
     request: {
@@ -65,11 +62,20 @@ export async function middleware(request: NextRequest) {
     }
   );
 
+  // Replace getSession with getUser for improved security
   const {
-    data: { session },
-  } = await supabase.auth.getSession();
+    data: { user },
+    error: authError,
+  } = await supabase.auth.getUser();
 
-  console.log("Session exists:", !!session);
+  // Handle any auth errors
+  if (authError) {
+    console.error("Auth error in middleware:", authError);
+  }
+
+  // Check if session exists (user is authenticated)
+  const hasSession = !!user;
+  console.log("Session exists:", hasSession);
 
   // Fix: More precise auth route pattern matching
   // Check if it's directly /login or in the auth group route
@@ -90,7 +96,7 @@ export async function middleware(request: NextRequest) {
   console.log("Is static or API route:", isStaticOrApiRoute);
 
   // If user is authenticated and visiting the home page, redirect to dashboard
-  if (session && request.nextUrl.pathname === "/") {
+  if (hasSession && request.nextUrl.pathname === "/") {
     console.log("Redirecting authenticated user from home to dashboard");
     const redirectUrl = new URL("/dashboard", request.url);
     const redirectResponse = NextResponse.redirect(redirectUrl);
@@ -102,7 +108,7 @@ export async function middleware(request: NextRequest) {
   }
 
   // Auth check for protected routes
-  if (!session && !isAuthRoute && !isStaticOrApiRoute) {
+  if (!hasSession && !isAuthRoute && !isStaticOrApiRoute) {
     console.log("Redirecting to login (no session)");
     const redirectUrl = new URL("/login", request.url);
     const redirectResponse = NextResponse.redirect(redirectUrl);
@@ -114,7 +120,7 @@ export async function middleware(request: NextRequest) {
   }
 
   // Redirect logged in users away from auth pages
-  if (session && isAuthRoute) {
+  if (hasSession && isAuthRoute) {
     console.log("Redirecting to dashboard (has session)");
     const redirectUrl = new URL("/dashboard", request.url);
     const redirectResponse = NextResponse.redirect(redirectUrl);
@@ -126,12 +132,12 @@ export async function middleware(request: NextRequest) {
   }
 
   // Check for admin-only routes
-  if (session && request.nextUrl.pathname.includes("/(admin)")) {
+  if (hasSession && request.nextUrl.pathname.includes("/(admin)")) {
     // Fetch user role from database
     const { data: userData, error } = await supabase
       .from("users")
       .select("role")
-      .eq("id", session.user.id)
+      .eq("id", user.id)
       .single();
 
     if (error || userData.role !== "admin") {

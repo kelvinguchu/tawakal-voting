@@ -82,9 +82,12 @@ export default async function DashboardPage() {
 
   // Check if the user is authenticated
   const {
-    data: { session },
-  } = await supabase.auth.getSession();
-  if (!session) {
+    data: { user },
+    error: authError,
+  } = await supabase.auth.getUser();
+  
+  if (authError || !user) {
+    console.error("Authentication error:", authError);
     redirect("/login");
   }
 
@@ -92,7 +95,7 @@ export default async function DashboardPage() {
   const { data: userData, error: userError } = await supabase
     .from("users")
     .select("*")
-    .eq("id", session.user.id)
+    .eq("id", user.id)
     .single();
 
   // Fetch active polls
@@ -107,7 +110,7 @@ export default async function DashboardPage() {
   const { count: voteCount, error: voteCountError } = await supabase
     .from("votes")
     .select("*", { count: "exact", head: true })
-    .eq("user_id", session.user.id);
+    .eq("user_id", user.id);
 
   return (
     <div className='space-y-6'>
