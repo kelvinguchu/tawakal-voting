@@ -4,8 +4,11 @@ import { PollDetail } from "@/components/polls/poll-detail";
 import { Metadata } from "next";
 import { Suspense } from "react";
 
-// Define the correct params type
-type Params = { id: string };
+// Define props interface with promise types as required by Next.js 15
+interface Props {
+  params: Promise<{ id: string }>;
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
+}
 
 // Metadata generator
 export async function generateMetadata({
@@ -50,12 +53,13 @@ async function PollStatusPreloader() {
   return null;
 }
 
-// Note the different approach to destructuring the props
-export default async function PollPage(props: { params: Params }) {
+// Using the Next.js 15 pattern for page components
+export default async function PollPage(props: Props) {
   const supabase = await createClient();
 
-  // No need to await props.params since it's a plain object
-  const { id: pollId } = props.params;
+  // Now we must await the params as they are promises
+  const params = await props.params;
+  const { id: pollId } = params;
 
   // Check if the user is authenticated
   const {
