@@ -4,15 +4,16 @@ import { PollDetail } from "@/components/polls/poll-detail";
 import { Metadata } from "next";
 import { Suspense } from "react";
 
-interface PollPageProps {
-  params: {
-    id: string;
-  };
-}
+// Define the correct page params type for Next.js
+type PageProps = {
+  params: { id: string };
+  searchParams: { [key: string]: string | string[] | undefined };
+};
 
+// Metadata generator
 export async function generateMetadata({
   params,
-}: PollPageProps): Promise<Metadata> {
+}: PageProps): Promise<Metadata> {
   const supabase = await createClient();
   const pollId = params.id;
 
@@ -50,7 +51,7 @@ async function PollStatusPreloader() {
   return null;
 }
 
-export default async function PollPage({ params }: PollPageProps) {
+export default async function PollPage({ params }: PageProps) {
   const supabase = await createClient();
   const pollId = params.id; // Store in a local variable to avoid the error
 
