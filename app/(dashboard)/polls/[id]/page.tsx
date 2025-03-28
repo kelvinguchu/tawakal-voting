@@ -4,7 +4,7 @@ import { PollDetail } from "@/components/polls/poll-detail";
 import { Metadata } from "next";
 import { Suspense } from "react";
 
-// Define the correct page params type for Next.js 15+
+// Define the correct params type
 type Params = Promise<{ id: string }>;
 
 // Metadata generator
@@ -50,11 +50,12 @@ async function PollStatusPreloader() {
   return null;
 }
 
-export default async function PollPage({ params }: { params: Params }) {
+// Note the different approach to destructuring the props
+export default async function PollPage(props: { params: Params }) {
   const supabase = await createClient();
 
-  // In Next.js 15+, params is a Promise that needs to be awaited
-  const { id: pollId } = await params;
+  // In Next.js 15, we need to await the params from props object
+  const { id: pollId } = await props.params;
 
   // Check if the user is authenticated
   const {
