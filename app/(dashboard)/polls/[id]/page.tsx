@@ -5,7 +5,7 @@ import { Metadata } from "next";
 import { Suspense } from "react";
 
 // Define the correct params type
-type Params = Promise<{ id: string }>;
+type Params = { id: string };
 
 // Metadata generator
 export async function generateMetadata({
@@ -54,8 +54,8 @@ async function PollStatusPreloader() {
 export default async function PollPage(props: { params: Params }) {
   const supabase = await createClient();
 
-  // In Next.js 15, we need to await the params from props object
-  const { id: pollId } = await props.params;
+  // No need to await props.params since it's a plain object
+  const { id: pollId } = props.params;
 
   // Check if the user is authenticated
   const {
