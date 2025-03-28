@@ -511,31 +511,92 @@ export function CreatePollForm({
             )}
           />
 
-          <FormField
-            control={form.control}
-            name='status'
-            render={({ field }) => (
-              <FormItem className='mb-2'>
-                <div className='flex items-center gap-2 mb-1'>
-                  <div
-                    className={cn(
-                      "w-2 h-2 rounded-full",
-                      field.value === "active" ? "bg-green-500" : "bg-blue-500"
-                    )}
-                  />
-                  <span className='text-sm font-medium text-gray-700'>
-                    {field.value === "active"
-                      ? "Poll will start immediately"
-                      : "Poll will start at scheduled time"}
-                  </span>
-                </div>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
+          <div className='mb-6'>
+            <FormField
+              control={form.control}
+              name='status'
+              render={({ field }) => (
+                <FormItem className='mb-0'>
+                  <div className='flex items-center gap-2 mb-0'>
+                    <div
+                      className={cn(
+                        "w-2 h-2 rounded-full",
+                        field.value === "active"
+                          ? "bg-green-500"
+                          : "bg-blue-500"
+                      )}
+                    />
+                    <span className='text-sm font-medium text-gray-700'>
+                      {field.value === "active"
+                        ? "Poll will start immediately"
+                        : "Poll will start at scheduled time"}
+                    </span>
+                  </div>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          </div>
 
-          <div className='grid grid-cols-1 md:grid-cols-12 gap-6'>
-            <div className='md:col-span-5'>
+          <div className='grid grid-cols-1 md:grid-cols-12 gap-4 gap-y-6'>
+            <div className='md:col-span-3 order-2 md:order-3'>
+              <FormItem>
+                <FormLabel className='text-gray-700 font-medium'>
+                  Start Option
+                </FormLabel>
+                <div
+                  className={cn(
+                    "flex items-center h-10 space-x-2 px-3 border rounded-md",
+                    startImmediately
+                      ? "border-green-300 bg-green-50"
+                      : "border-gray-300 bg-white"
+                  )}>
+                  <input
+                    type='checkbox'
+                    id='startImmediately'
+                    checked={startImmediately}
+                    onChange={(e) => {
+                      setStartImmediately(e.target.checked);
+                      if (e.target.checked) {
+                        // When checked, set start date to now
+                        const now = new Date();
+                        form.setValue("startDate", now);
+
+                        // Format the current time as HH:MM for the time input
+                        const hours = now
+                          .getHours()
+                          .toString()
+                          .padStart(2, "0");
+                        const minutes = now
+                          .getMinutes()
+                          .toString()
+                          .padStart(2, "0");
+                        form.setValue("startTime", `${hours}:${minutes}`);
+
+                        // Set status to active
+                        form.setValue("status", "active");
+                      } else {
+                        // When unchecked, set status back to scheduled
+                        form.setValue("status", "scheduled");
+                      }
+                    }}
+                    className='h-4 w-4 rounded border-gray-300 text-green-600 focus:ring-green-500'
+                  />
+                  <label
+                    htmlFor='startImmediately'
+                    className='text-sm font-medium cursor-pointer flex-grow'>
+                    Start immediately
+                  </label>
+                  {startImmediately && (
+                    <span className='text-xs text-green-700 bg-green-100 px-2 py-1 rounded'>
+                      Now
+                    </span>
+                  )}
+                </div>
+              </FormItem>
+            </div>
+
+            <div className='md:col-span-4 order-1 md:order-1'>
               <FormField
                 control={form.control}
                 name='startDate'
@@ -544,63 +605,39 @@ export function CreatePollForm({
                     <FormLabel className='text-gray-700 font-medium'>
                       Start Date
                     </FormLabel>
-                    <div className='space-y-4'>
-                      <div className='flex items-center'>
-                        <input
-                          type='checkbox'
-                          id='startImmediately'
-                          checked={startImmediately}
-                          onChange={(e) => {
-                            setStartImmediately(e.target.checked);
-                            if (e.target.checked) {
-                              // When checked, set start date to now
-                              field.onChange(new Date());
-                              // Set status to active
-                              form.setValue("status", "active");
-                            } else {
-                              // When unchecked, set status back to scheduled
-                              form.setValue("status", "scheduled");
+                    <div className='relative'>
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <FormControl>
+                            <Button
+                              variant='outline'
+                              className={cn(
+                                "w-full pl-3 text-left font-normal border border-gray-300 bg-white hover:bg-gray-50",
+                                startImmediately && "opacity-60 bg-gray-50",
+                                !field.value && "text-muted-foreground"
+                              )}
+                              disabled={startImmediately}>
+                              {field.value ? (
+                                format(field.value, "PPP")
+                              ) : (
+                                <span>Pick a date</span>
+                              )}
+                              <CalendarIcon className='ml-auto h-4 w-4 opacity-70' />
+                            </Button>
+                          </FormControl>
+                        </PopoverTrigger>
+                        <PopoverContent className='w-auto p-0' align='start'>
+                          <Calendar
+                            mode='single'
+                            selected={field.value}
+                            onSelect={field.onChange}
+                            disabled={(date) =>
+                              date < new Date() || startImmediately
                             }
-                          }}
-                          className='h-4 w-4 rounded border-tawakal-blue/30 text-tawakal-blue focus:ring-tawakal-blue'
-                        />
-                        <label
-                          htmlFor='startImmediately'
-                          className='ml-2 text-sm font-medium text-gray-700'>
-                          Start poll immediately
-                        </label>
-                      </div>
-
-                      {!startImmediately && (
-                        <Popover>
-                          <PopoverTrigger asChild>
-                            <FormControl>
-                              <Button
-                                variant='outline'
-                                className={cn(
-                                  "w-full pl-3 text-left font-normal border border-gray-300 bg-white hover:bg-gray-50",
-                                  !field.value && "text-muted-foreground"
-                                )}>
-                                {field.value ? (
-                                  format(field.value, "PPP")
-                                ) : (
-                                  <span>Pick a date</span>
-                                )}
-                                <CalendarIcon className='ml-auto h-4 w-4 opacity-70' />
-                              </Button>
-                            </FormControl>
-                          </PopoverTrigger>
-                          <PopoverContent className='w-auto p-0' align='start'>
-                            <Calendar
-                              mode='single'
-                              selected={field.value}
-                              onSelect={field.onChange}
-                              disabled={(date) => date < new Date()}
-                              initialFocus
-                            />
-                          </PopoverContent>
-                        </Popover>
-                      )}
+                            initialFocus
+                          />
+                        </PopoverContent>
+                      </Popover>
                     </div>
                     <FormMessage />
                   </FormItem>
@@ -608,7 +645,7 @@ export function CreatePollForm({
               />
             </div>
 
-            <div className='md:col-span-3'>
+            <div className='md:col-span-3 order-3 md:order-2'>
               <FormField
                 control={form.control}
                 name='startTime'
@@ -625,24 +662,19 @@ export function CreatePollForm({
                           disabled={startImmediately}
                           className={cn(
                             "pl-9 border-gray-300 focus-visible:ring-tawakal-blue focus-visible:border-tawakal-blue",
-                            startImmediately && "opacity-50 bg-gray-50"
+                            startImmediately && "opacity-60 bg-gray-50"
                           )}
                         />
                         <Clock className='absolute left-3 top-2.5 h-4 w-4 text-gray-500' />
                       </div>
                     </FormControl>
-                    {startImmediately && (
-                      <p className='text-xs text-gray-500 mt-1'>
-                        Current time will be used
-                      </p>
-                    )}
                     <FormMessage />
                   </FormItem>
                 )}
               />
             </div>
 
-            <div className='md:col-span-4'>
+            <div className='md:col-span-2 order-4 md:order-4'>
               <FormField
                 control={form.control}
                 name='duration'
