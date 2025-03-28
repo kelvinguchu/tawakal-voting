@@ -60,9 +60,10 @@ export async function fetchPollWithOptions(
     pollWithResults.total_votes = 0;
 
     // Fetch votes for this poll
+    console.log(`Fetching votes for poll: ${pollId} using standard client`);
     const { data: votes, error: votesError } = await supabase
       .from("votes")
-      .select("option_id")
+      .select("option_id, id, user_id")
       .eq("poll_id", pollId);
 
     if (votesError) {
@@ -77,32 +78,162 @@ export async function fetchPollWithOptions(
         results[option.id] = 0;
       });
 
+      console.log(`Poll ${pollId} has ${votes.length} votes:`, votes);
+
+      // Check if userId is in the votes
+      if (userId) {
+        const userVoted = votes.some((vote) => vote.user_id === userId);
+        console.log(`User ${userId} has voted in poll ${pollId}: ${userVoted}`);
+
+        // If user has voted, set it immediately to avoid inconsistency
+        if (userVoted) {
+          const userVote = votes.find((vote) => vote.user_id === userId);
+          if (userVote && userVote.option_id) {
+            pollWithResults.user_vote = userVote.option_id;
+            console.log(
+              `Setting user vote from votes array: ${userVote.option_id}`
+            );
+          }
+        }
+      }
+
       // Count actual votes
       votes.forEach((vote) => {
-        if (results[vote.option_id] !== undefined) {
-          results[vote.option_id]++;
-        } else {
-          results[vote.option_id] = 1;
+        if (vote.option_id) {
+          if (results[vote.option_id] !== undefined) {
+            results[vote.option_id]++;
+          } else {
+            results[vote.option_id] = 1;
+          }
         }
       });
 
       pollWithResults.results = results;
       pollWithResults.total_votes = votes.length;
+
+      console.log(`Poll ${pollId} vote counts:`, results);
+      console.log(`Poll ${pollId} total votes: ${votes.length}`);
+    } else {
+      console.log(`Poll ${pollId} has no votes yet (or query failed silently)`);
+
+      // Try a direct SQL query as a backup approach
+      try {
+        const { data: directVotes, error: directError } = await supabase.rpc(
+          "get_votes_for_poll",
+          { poll_id: pollId }
+        );
+
+        if (!directError && directVotes && directVotes.length > 0) {
+          console.log(
+            `Direct SQL found ${directVotes.length} votes for poll ${pollId}`
+          );
+
+          // Update poll with these votes
+          const results: PollResults = {};
+          poll.poll_options.forEach((option: PollOption) => {
+            results[option.id] = 0;
+          });
+
+          directVotes.forEach((vote: any) => {
+            if (vote.option_id && results[vote.option_id] !== undefined) {
+              results[vote.option_id]++;
+            }
+
+            // Check if this is the user's vote
+            if (userId && vote.user_id === userId) {
+              pollWithResults.user_vote = vote.option_id;
+              console.log(`Found user vote via direct SQL: ${vote.option_id}`);
+            }
+          });
+
+          pollWithResults.results = results;
+          pollWithResults.total_votes = directVotes.length;
+        } else if (directError) {
+          console.error("Error in direct vote query:", directError);
+        }
+      } catch (directQueryError) {
+        console.error("Could not execute direct vote query:", directQueryError);
+      }
     }
 
-    // If userId is provided, check if they've voted
-    if (userId) {
+    // If userId is provided, check if they've voted (regardless of earlier results)
+    if (userId && !pollWithResults.user_vote) {
+      console.log(
+        `Double-checking if user ${userId} has voted in poll ${pollId}`
+      );
       const { data: userVote, error: userVoteError } = await supabase
         .from("votes")
-        .select("option_id")
+        .select("option_id, id")
         .eq("poll_id", pollId)
         .eq("user_id", userId)
         .maybeSingle();
 
-      if (!userVoteError && userVote) {
+      if (userVoteError) {
+        console.error(`Error checking if user ${userId} voted:`, userVoteError);
+
+        // Try another approach if we hit an error - try a direct SQL query
+        try {
+          const { data: directUserVote, error: directVoteError } =
+            await supabase.rpc("get_user_vote", {
+              p_poll_id: pollId,
+              p_user_id: userId,
+            });
+
+          if (!directVoteError && directUserVote) {
+            console.log(
+              `Direct SQL found user vote: ${directUserVote.option_id}`
+            );
+            pollWithResults.user_vote = directUserVote.option_id;
+          } else if (directVoteError) {
+            console.error("Error in direct user vote query:", directVoteError);
+          }
+        } catch (directUserVoteError) {
+          console.error(
+            "Failed to execute direct user vote query:",
+            directUserVoteError
+          );
+        }
+      } else if (userVote) {
+        console.log(
+          `User ${userId} has voted for option ${userVote.option_id} in poll ${pollId}`
+        );
         pollWithResults.user_vote = userVote.option_id;
       } else {
-        pollWithResults.user_vote = null;
+        console.log(
+          `User ${userId} has not voted in poll ${pollId} via standard query`
+        );
+
+        // As a final check, try a more direct approach
+        try {
+          const { count, error: countError } = await supabase
+            .from("votes")
+            .select("*", { count: "exact", head: true })
+            .eq("poll_id", pollId)
+            .eq("user_id", userId);
+
+          if (!countError && count && count > 0) {
+            console.log(
+              `Count query found ${count} votes by user ${userId} in poll ${pollId}`
+            );
+
+            // Try to get the actual vote
+            const { data: lastResortVote } = await supabase
+              .from("votes")
+              .select("option_id")
+              .eq("poll_id", pollId)
+              .eq("user_id", userId)
+              .single();
+
+            if (lastResortVote) {
+              console.log(
+                `Last resort found user vote: ${lastResortVote.option_id}`
+              );
+              pollWithResults.user_vote = lastResortVote.option_id;
+            }
+          }
+        } catch (countError) {
+          console.error("Error in count query:", countError);
+        }
       }
     }
 

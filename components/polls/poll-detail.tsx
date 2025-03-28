@@ -19,6 +19,7 @@ import {
   Loader2,
   Info,
   X,
+  RefreshCw,
 } from "lucide-react";
 import Link from "next/link";
 import { toast } from "sonner";
@@ -34,6 +35,7 @@ import {
   fetchPollWithOptions,
   fetchPollOptionImages,
 } from "@/app/actions/polls/fetch-poll-data";
+import { createClient } from "@/lib/supabase/client";
 
 // Format date helper function
 const formatDate = (dateString: string | null, includeTime = true) => {
@@ -52,6 +54,7 @@ interface PollDetailProps {
 }
 
 export function PollDetail({ pollId, userId }: PollDetailProps) {
+  const supabase = createClient();
   const [poll, setPoll] = useState<Poll | null>(null);
   const [options, setOptions] = useState<PollOption[]>([]);
   const [optionImages, setOptionImages] = useState<Record<string, string>>({});
@@ -61,46 +64,116 @@ export function PollDetail({ pollId, userId }: PollDetailProps) {
   const [userVote, setUserVote] = useState<string | null>(null);
   const [results, setResults] = useState<Record<string, number>>({});
   const [totalVotes, setTotalVotes] = useState(0);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [checkedVoteStatus, setCheckedVoteStatus] = useState(false);
 
-  // Get poll details using server actions
+  // Direct check for existing votes
+  const checkDirectVoteStatus = async () => {
+    try {
+      // First try direct query
+      const { data: existingVote, error } = await supabase
+        .from("votes")
+        .select("option_id")
+        .eq("poll_id", pollId)
+        .eq("user_id", userId)
+        .single();
+
+      if (error) {
+        return false;
+      }
+
+      if (existingVote) {
+        setUserVote(existingVote.option_id);
+        setSelectedOption(existingVote.option_id);
+        setCheckedVoteStatus(true);
+        return true;
+      }
+
+      return false;
+    } catch (error) {
+      return false;
+    }
+  };
+
+  // Function to fetch poll data (can be called after voting)
+  const fetchPollDetails = async () => {
+    setLoading(true);
+    setErrorMessage(null);
+
+    try {
+      // First, directly check if the user has already voted using Supabase client
+      if (!checkedVoteStatus) {
+        const directFound = await checkDirectVoteStatus();
+
+        if (!directFound) {
+          // Then try the server action as backup
+          const voteResult = await getUserVote(pollId);
+
+          if (voteResult.success && voteResult.optionId) {
+            setUserVote(voteResult.optionId);
+            setSelectedOption(voteResult.optionId);
+            setCheckedVoteStatus(true);
+          }
+        }
+      }
+
+      // Fetch poll data with options and vote counts using server action
+      const pollData = await fetchPollWithOptions(pollId, userId);
+
+      if (!pollData) {
+        throw new Error("Failed to fetch poll data");
+      }
+
+      setPoll(pollData);
+      setOptions(pollData.poll_options || []);
+
+      // Double check user's vote status to be certain
+      if (pollData.user_vote) {
+        setUserVote(pollData.user_vote);
+        setSelectedOption(pollData.user_vote);
+        setCheckedVoteStatus(true);
+      }
+
+      // Set results from the fetched data
+      if (pollData.results) {
+        setResults(pollData.results);
+        setTotalVotes(pollData.total_votes || 0);
+      }
+
+      // Fetch option images using server action
+      const images = await fetchPollOptionImages(pollId);
+      setOptionImages(images);
+    } catch (error) {
+      setErrorMessage("Failed to load poll details");
+      toast.error("Failed to load poll details");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Get poll details on initial load
   useEffect(() => {
-    const fetchPollDetails = async () => {
-      setLoading(true);
+    // Immediately check if user has already voted
+    const checkVoteStatus = async () => {
       try {
-        // Fetch poll data with options and vote counts using server action
-        const pollData = await fetchPollWithOptions(pollId, userId);
+        // First try direct check
+        const directFound = await checkDirectVoteStatus();
 
-        if (!pollData) {
-          throw new Error("Failed to fetch poll data");
+        if (!directFound) {
+          // Then try server action as backup
+          const voteResult = await getUserVote(pollId);
+          if (voteResult.success && voteResult.optionId) {
+            setUserVote(voteResult.optionId);
+            setSelectedOption(voteResult.optionId);
+            setCheckedVoteStatus(true);
+          }
         }
-
-        setPoll(pollData);
-        setOptions(pollData.poll_options || []);
-
-        // Set user's vote if they've already voted
-        if (pollData.user_vote) {
-          setUserVote(pollData.user_vote);
-          setSelectedOption(pollData.user_vote);
-        }
-
-        // Set results from the fetched data
-        if (pollData.results) {
-          setResults(pollData.results);
-          setTotalVotes(pollData.total_votes || 0);
-        }
-
-        // Fetch option images using server action
-        const images = await fetchPollOptionImages(pollId);
-        setOptionImages(images);
       } catch (error) {
-        console.error("Error fetching poll details:", error);
-        toast.error("Failed to load poll details");
-      } finally {
-        setLoading(false);
+        // Silent failure
       }
     };
 
-    fetchPollDetails();
+    checkVoteStatus().then(() => fetchPollDetails());
   }, [pollId, userId]);
 
   const handleVote = async () => {
@@ -109,28 +182,39 @@ export function PollDetail({ pollId, userId }: PollDetailProps) {
       return;
     }
 
+    // Don't allow voting if already voted
+    if (userVote) {
+      toast.error("You have already voted in this poll");
+      return;
+    }
+
     setSubmitting(true);
+    setErrorMessage(null);
 
     try {
       // Call the server action for vote submission
       const result = await submitVote(pollId, selectedOption);
 
       if (!result.success) {
+        setErrorMessage(result.message);
         toast.error(result.message);
+
+        // If the error is because the user already voted, update the UI state
+        if (result.message.includes("already voted") && result.optionId) {
+          setUserVote(result.optionId);
+          setCheckedVoteStatus(true);
+        }
         return;
       }
 
       setUserVote(result.optionId || selectedOption);
+      setCheckedVoteStatus(true);
       toast.success(result.message);
 
-      // Refetch poll data to get updated vote counts
-      const updatedPoll = await fetchPollWithOptions(pollId, userId);
-      if (updatedPoll && updatedPoll.results) {
-        setResults(updatedPoll.results);
-        setTotalVotes(updatedPoll.total_votes || 0);
-      }
+      // Refresh poll data to get updated vote counts
+      await fetchPollDetails();
     } catch (error) {
-      console.error("Error submitting vote:", error);
+      setErrorMessage("An unexpected error occurred. Please try again.");
       toast.error("An unexpected error occurred. Please try again.");
     } finally {
       setSubmitting(false);
@@ -191,10 +275,17 @@ export function PollDetail({ pollId, userId }: PollDetailProps) {
 
   // Simplified logic that relies more on the database status
   // and only adjusts for edge cases
+  const hasVoted = !!userVote || checkedVoteStatus;
+
   const isPollAcceptingVotes =
+    // Must be active status
     poll?.status === "active" &&
+    // Must not be past end time
     poll.end_time &&
-    new Date() < new Date(poll.end_time);
+    new Date() < new Date(poll.end_time) &&
+    // User must not have voted (double check both vote info sources)
+    !userVote &&
+    !hasVoted;
 
   const isPollScheduled = poll?.status === "scheduled";
 
@@ -204,7 +295,6 @@ export function PollDetail({ pollId, userId }: PollDetailProps) {
       poll.end_time &&
       new Date() >= new Date(poll.end_time));
 
-  const hasVoted = !!userVote;
   const showResults = hasVoted || isPollScheduled || isPollClosed;
 
   if (loading) {
@@ -231,8 +321,8 @@ export function PollDetail({ pollId, userId }: PollDetailProps) {
   }
 
   return (
-    <div className='space-y-6 w-full'>
-      <div className='flex items-center justify-between gap-2'>
+    <div className='space-y-6 w-full max-h-[85vh] overflow-y-auto px-1'>
+      <div className='flex items-center justify-between gap-2 sticky top-0 bg-background z-10 py-2'>
         <Button variant='ghost' size='sm' asChild>
           <Link href='/polls'>
             <ArrowLeft className='h-4 w-4 mr-1' />
@@ -248,8 +338,23 @@ export function PollDetail({ pollId, userId }: PollDetailProps) {
       </div>
 
       <Card className='w-full'>
-        <CardHeader>
-          <CardTitle className='text-2xl'>{poll.title}</CardTitle>
+        <CardHeader className='sticky top-14 bg-card z-10'>
+          <div className='flex justify-between items-center'>
+            <CardTitle className='text-2xl'>{poll?.title}</CardTitle>
+            <Button
+              variant='ghost'
+              size='sm'
+              onClick={() => {
+                setLoading(true);
+                fetchPollDetails().then(() => setLoading(false));
+              }}
+              disabled={loading}
+              title='Refresh poll data'>
+              <RefreshCw
+                className={`h-4 w-4 ${loading ? "animate-spin" : ""}`}
+              />
+            </Button>
+          </div>
           <CardDescription>
             <div className='flex items-center mt-2'>
               <div
@@ -272,14 +377,21 @@ export function PollDetail({ pollId, userId }: PollDetailProps) {
           )}
 
           {/* Display alert if user has already voted */}
-          {hasVoted && isPollAcceptingVotes && (
+          {hasVoted && (
             <Alert className='bg-tawakal-green/10 border-tawakal-green/20'>
               <CheckCircle2 className='h-4 w-4 text-tawakal-green' />
-              <AlertTitle className='text-tawakal-green'>
-                You have voted
+              <AlertTitle className='text-tawakal-green font-semibold'>
+                You have already voted
               </AlertTitle>
               <AlertDescription>
-                You have already submitted your vote for this poll.
+                Your vote has been recorded for this poll. You can see the
+                current results below.
+                {userVote && options.find((o) => o.id === userVote) && (
+                  <span className='block mt-1 font-medium'>
+                    You voted for:{" "}
+                    {options.find((o) => o.id === userVote)?.option_text}
+                  </span>
+                )}
               </AlertDescription>
             </Alert>
           )}
@@ -311,6 +423,15 @@ export function PollDetail({ pollId, userId }: PollDetailProps) {
             </Alert>
           )}
 
+          {/* Display any error messages */}
+          {errorMessage && (
+            <Alert className='bg-red-50 border-red-200'>
+              <X className='h-4 w-4 text-red-500' />
+              <AlertTitle className='text-red-600'>Error</AlertTitle>
+              <AlertDescription>{errorMessage}</AlertDescription>
+            </Alert>
+          )}
+
           <div className='space-y-4'>
             <h3 className='text-lg font-medium'>
               {showResults ? "Results" : "Options"}
@@ -328,16 +449,22 @@ export function PollDetail({ pollId, userId }: PollDetailProps) {
                     key={option.id}
                     className={cn(
                       "border rounded-lg p-4 relative transition-all",
-                      showResults
-                        ? "cursor-default"
-                        : "cursor-pointer hover:border-tawakal-green/50",
+                      !hasVoted && !showResults
+                        ? "cursor-pointer hover:border-tawakal-green/50"
+                        : "cursor-default",
                       selectedOption === option.id &&
                         "border-tawakal-green bg-tawakal-green/5",
                       userVote === option.id &&
                         "border-tawakal-green bg-tawakal-green/5"
                     )}
                     onClick={() => {
-                      if (!showResults && !submitting) {
+                      // Extra check to prevent clicking after vote
+                      if (
+                        !userVote &&
+                        !hasVoted &&
+                        !showResults &&
+                        !submitting
+                      ) {
                         setSelectedOption(option.id);
                       }
                     }}>
@@ -391,14 +518,14 @@ export function PollDetail({ pollId, userId }: PollDetailProps) {
             </div>
           </div>
         </CardContent>
-        <CardFooter className='flex justify-between'>
+        <CardFooter className='flex justify-between sticky bottom-0 bg-card z-10 border-t py-4'>
           <DrawerClose asChild>
             <Button variant='outline'>
               <X className='mr-2 h-4 w-4' />
               Close
             </Button>
           </DrawerClose>
-          {isPollAcceptingVotes && !hasVoted && !isPollScheduled && (
+          {isPollAcceptingVotes && !hasVoted && (
             <Button
               onClick={handleVote}
               disabled={!selectedOption || submitting}
@@ -418,7 +545,7 @@ export function PollDetail({ pollId, userId }: PollDetailProps) {
               disabled
               className='bg-tawakal-blue/20 text-tawakal-blue cursor-not-allowed'>
               <Calendar className='mr-2 h-4 w-4' />
-              Opens {formatDate(poll.start_time, false)}
+              Opens {formatDate(poll?.start_time, false)}
             </Button>
           )}
         </CardFooter>

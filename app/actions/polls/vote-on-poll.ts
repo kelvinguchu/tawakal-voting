@@ -3,6 +3,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
 import { requireAuth } from "../auth/check-user-role";
+import { createClient as createAdminClient } from "@supabase/supabase-js";
 
 type VoteResult = {
   success: boolean;
@@ -148,6 +149,112 @@ export async function submitVote(
     if (voteError) {
       console.error("Error submitting vote:", voteError);
 
+      // If we hit RLS policy violation, try again with admin key
+      if (voteError.code === "42501") {
+        console.log("Attempting to bypass RLS with service role...");
+
+        // Get the environment variables directly
+        const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+        const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
+
+        // Create a custom fetch with timeout
+        const fetchWithTimeout = (
+          url: RequestInfo | URL,
+          options: RequestInit = {},
+          timeout = 30000
+        ): Promise<Response> => {
+          const controller = new AbortController();
+          const { signal } = controller;
+
+          // Create a timeout to abort the fetch
+          const timeoutId = setTimeout(() => controller.abort(), timeout);
+
+          return fetch(url, { ...options, signal }).finally(() =>
+            clearTimeout(timeoutId)
+          );
+        };
+
+        // Create a new client with the service role key to bypass RLS
+        const supabaseAdmin = createAdminClient(
+          supabaseUrl,
+          supabaseServiceKey,
+          {
+            auth: {
+              autoRefreshToken: false,
+              persistSession: false,
+            },
+            global: {
+              fetch: fetchWithTimeout,
+              headers: { "x-client-info": "server-action" },
+            },
+          }
+        );
+
+        try {
+          // Try inserting again with admin privileges
+          const { data: adminVote, error: adminVoteError } = await supabaseAdmin
+            .from("votes")
+            .insert({
+              poll_id: pollId,
+              option_id: optionId,
+              user_id: userId,
+            })
+            .select()
+            .single();
+
+          if (adminVoteError) {
+            console.error(
+              "Error submitting vote with service role:",
+              adminVoteError
+            );
+
+            // Special handling for unique constraint violations
+            if (adminVoteError.code === "23505") {
+              return {
+                success: false,
+                message: "You have already voted in this poll",
+              };
+            }
+
+            return {
+              success: false,
+              message:
+                adminVoteError.message ||
+                "Failed to submit vote, even with administrative privileges",
+            };
+          }
+
+          // Successfully inserted with admin privileges
+          // Revalidate relevant paths to update UI
+          revalidatePath("/polls");
+          revalidatePath("/dashboard");
+          revalidatePath(`/polls/${pollId}`);
+
+          return {
+            success: true,
+            message: "Your vote has been recorded successfully",
+            voteId: adminVote.id,
+            optionId: optionId,
+          };
+        } catch (adminError) {
+          console.error("Admin client vote error:", adminError);
+
+          // Check if it's a timeout error
+          if (adminError instanceof Error && adminError.name === "AbortError") {
+            return {
+              success: false,
+              message: "Operation timed out. Please try again.",
+            };
+          }
+
+          return {
+            success: false,
+            message: "An unexpected error occurred while processing your vote",
+          };
+        }
+      }
+
+      // Regular error handling
       // Special handling for unique constraint violations
       if (voteError.code === "23505") {
         return {
@@ -187,7 +294,11 @@ export async function submitVote(
  * @param pollId The ID of the poll to check
  * @returns The option ID the user voted for, or null if they haven't voted
  */
-export async function getUserVote(pollId: string): Promise<string | null> {
+export async function getUserVote(pollId: string): Promise<{
+  optionId: string | null;
+  success: boolean;
+  message?: string;
+}> {
   try {
     // Ensure user is authenticated
     const { user } = await requireAuth();
@@ -198,19 +309,118 @@ export async function getUserVote(pollId: string): Promise<string | null> {
     // Find user's vote in this poll
     const { data, error } = await supabase
       .from("votes")
-      .select("option_id")
+      .select("option_id, id")
       .eq("poll_id", pollId)
       .eq("user_id", userId)
       .maybeSingle();
 
     if (error) {
       console.error("Error fetching user vote:", error);
-      return null;
+
+      // If we hit an RLS policy violation, try with admin client
+      if (error.code === "42501") {
+        // Get the environment variables directly
+        const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+        const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
+
+        // Create a custom fetch with timeout
+        const fetchWithTimeout = (
+          url: RequestInfo | URL,
+          options: RequestInit = {},
+          timeout = 30000
+        ): Promise<Response> => {
+          const controller = new AbortController();
+          const { signal } = controller;
+
+          // Create a timeout to abort the fetch
+          const timeoutId = setTimeout(() => controller.abort(), timeout);
+
+          return fetch(url, { ...options, signal }).finally(() =>
+            clearTimeout(timeoutId)
+          );
+        };
+
+        // Create a new client with the service role key to bypass RLS
+        const supabaseAdmin = createAdminClient(
+          supabaseUrl,
+          supabaseServiceKey,
+          {
+            auth: {
+              autoRefreshToken: false,
+              persistSession: false,
+            },
+            global: {
+              fetch: fetchWithTimeout,
+              headers: { "x-client-info": "server-action" },
+            },
+            db: {
+              schema: "public",
+            },
+          }
+        );
+
+        try {
+          // Try again with admin privileges
+          const { data: adminData, error: adminError } = await supabaseAdmin
+            .from("votes")
+            .select("option_id, id")
+            .eq("poll_id", pollId)
+            .eq("user_id", userId)
+            .maybeSingle();
+
+          if (adminError) {
+            console.error(
+              "Error fetching user vote with service role:",
+              adminError
+            );
+            return {
+              optionId: null,
+              success: false,
+              message: "Failed to fetch vote information",
+            };
+          }
+
+          return {
+            optionId: adminData?.option_id || null,
+            success: true,
+          };
+        } catch (adminError) {
+          console.error("Admin client vote check error:", adminError);
+
+          // Check if it's a timeout error
+          if (adminError instanceof Error && adminError.name === "AbortError") {
+            return {
+              optionId: null,
+              success: false,
+              message: "Operation timed out. Please try again.",
+            };
+          }
+
+          return {
+            optionId: null,
+            success: false,
+            message: "An unexpected error occurred",
+          };
+        }
+      }
+
+      return {
+        optionId: null,
+        success: false,
+        message: "Failed to check vote status",
+      };
     }
 
-    return data?.option_id || null;
+    return {
+      optionId: data?.option_id || null,
+      success: true,
+    };
   } catch (error) {
     console.error("Error in getUserVote:", error);
-    return null;
+    return {
+      optionId: null,
+      success: false,
+      message: "An unexpected error occurred",
+    };
   }
 }

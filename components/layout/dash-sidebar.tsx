@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
@@ -11,13 +11,8 @@ import {
   Home,
   ListChecks,
   Users,
-  FileText,
-  Settings,
   LogOut,
   ChevronRight,
-  Bell,
-  PlusCircle,
-  UserCircle,
   Plus,
   UserPlus,
 } from "lucide-react";
@@ -71,30 +66,6 @@ export function DashSidebar({
       color: "text-tawakal-blue",
       bgActiveClass: "bg-tawakal-blue/10 dark:bg-tawakal-blue/20",
     },
-    {
-      name: "Vote History",
-      href: "/history",
-      icon: <FileText className='h-5 w-5' />,
-      activePattern: /^\/history/,
-      color: "text-tawakal-gold",
-      bgActiveClass: "bg-tawakal-gold/10 dark:bg-tawakal-gold/20",
-    },
-    {
-      name: "Notifications",
-      href: "/notifications",
-      icon: <Bell className='h-5 w-5' />,
-      activePattern: /^\/notifications/,
-      color: "text-tawakal-blue",
-      bgActiveClass: "bg-tawakal-blue/10 dark:bg-tawakal-blue/20",
-    },
-    {
-      name: "Profile",
-      href: "/profile",
-      icon: <UserCircle className='h-5 w-5' />,
-      activePattern: /^\/profile/,
-      color: "text-tawakal-green",
-      bgActiveClass: "bg-tawakal-green/10 dark:bg-tawakal-green/20",
-    },
   ];
 
   // Admin-only navigation items
@@ -106,22 +77,6 @@ export function DashSidebar({
       activePattern: /^\/admin\/users/,
       color: "text-tawakal-red",
       bgActiveClass: "bg-tawakal-red/10 dark:bg-tawakal-red/20",
-    },
-    {
-      name: "Poll Analytics",
-      href: "/admin/analytics",
-      icon: <BarChart3 className='h-5 w-5' />,
-      activePattern: /^\/admin\/analytics/,
-      color: "text-tawakal-gold",
-      bgActiveClass: "bg-tawakal-gold/10 dark:bg-tawakal-gold/20",
-    },
-    {
-      name: "Settings",
-      href: "/admin/settings",
-      icon: <Settings className='h-5 w-5' />,
-      activePattern: /^\/admin\/settings/,
-      color: "text-tawakal-blue",
-      bgActiveClass: "bg-tawakal-blue/10 dark:bg-tawakal-blue/20",
     },
   ];
 
@@ -140,20 +95,22 @@ export function DashSidebar({
           height: "calc(100vh - 64px)",
         }}>
         <SidebarContent className='pt-4 px-2 overflow-y-auto overflow-x-hidden flex-grow'>
-          {/* Create Poll Button */}
-          <div className='px-3 py-2'>
-            <Button
-              asChild
-              className='w-full bg-tawakal-green hover:bg-tawakal-green/90 text-white'>
-              <Link href='/admin/create-poll'>
-                <Plus size={16} className='mr-2' />
-                Create Poll
-              </Link>
-            </Button>
-          </div>
+          {/* Create Poll Button - Only show for admins */}
+          {user?.role === "admin" && (
+            <div className='px-3 py-2'>
+              <Button
+                asChild
+                className='w-full bg-tawakal-green hover:bg-tawakal-green/90 text-white'>
+                <Link href='/admin/create-poll'>
+                  <Plus size={16} className='mr-2' />
+                  Create Poll
+                </Link>
+              </Button>
+            </div>
+          )}
 
           <SidebarGroup>
-            <SidebarGroupLabel className='px-3'>General</SidebarGroupLabel>
+            <SidebarGroupLabel className='px-3'>Menu</SidebarGroupLabel>
             <SidebarMenu>
               {navItems.map((item) => (
                 <SidebarMenuItem key={item.href}>
