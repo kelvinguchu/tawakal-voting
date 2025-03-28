@@ -4,26 +4,25 @@ import { PollDetail } from "@/components/polls/poll-detail";
 import { Metadata } from "next";
 import { Suspense } from "react";
 
-// Define props interface with promise types as required by Next.js 15
-interface Props {
-  params: Promise<{ id: string }>;
-  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
-}
+// Define the params type as Promise
+type Params = Promise<{ id: string }>;
+type SearchParams = Promise<{ [key: string]: string | string[] | undefined }>;
 
-// Metadata generator
+// Metadata generator using Promise params
 export async function generateMetadata({
   params,
 }: {
-  params: { id: string };
+  params: Params;
 }): Promise<Metadata> {
+  // In Next.js 15, we need to await the params
+  const { id } = await params;
   const supabase = await createClient();
-  const pollId = params.id;
 
   try {
     const { data: poll } = await supabase
       .from("polls")
       .select("title")
-      .eq("id", pollId)
+      .eq("id", id)
       .single();
 
     return {
@@ -53,13 +52,17 @@ async function PollStatusPreloader() {
   return null;
 }
 
-// Using the Next.js 15 pattern for page components
-export default async function PollPage(props: Props) {
+// Using the Next.js 15 pattern with Promise params
+export default async function PollPage({
+  params,
+  searchParams,
+}: {
+  params: Params;
+  searchParams: SearchParams;
+}) {
+  // Await the params to get the actual values
+  const { id: pollId } = await params;
   const supabase = await createClient();
-
-  // Now we must await the params as they are promises
-  const params = await props.params;
-  const { id: pollId } = params;
 
   // Check if the user is authenticated
   const {
