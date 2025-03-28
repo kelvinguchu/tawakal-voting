@@ -42,6 +42,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Badge } from "@/components/ui/badge";
 
 const formSchema = z.object({
   title: z.string().min(3, {
@@ -517,20 +518,22 @@ export function CreatePollForm({
               name='status'
               render={({ field }) => (
                 <FormItem className='mb-0'>
-                  <div className='flex items-center gap-2 mb-0'>
-                    <div
+                  <FormLabel className='text-gray-700 font-medium mb-1'>
+                    Poll Status
+                  </FormLabel>
+                  <div>
+                    <Badge
+                      variant='outline'
                       className={cn(
-                        "w-2 h-2 rounded-full",
+                        "px-3 py-1 text-sm",
                         field.value === "active"
-                          ? "bg-green-500"
-                          : "bg-blue-500"
-                      )}
-                    />
-                    <span className='text-sm font-medium text-gray-700'>
+                          ? "bg-green-50 text-green-700 border-green-200"
+                          : "bg-blue-50 text-blue-700 border-blue-200"
+                      )}>
                       {field.value === "active"
-                        ? "Poll will start immediately"
-                        : "Poll will start at scheduled time"}
-                    </span>
+                        ? "Active (Starts immediately)"
+                        : "Scheduled (Starts at specified time)"}
+                    </Badge>
                   </div>
                   <FormMessage />
                 </FormItem>
@@ -546,51 +549,55 @@ export function CreatePollForm({
                 </FormLabel>
                 <div
                   className={cn(
-                    "flex items-center h-10 space-x-2 px-3 border rounded-md",
+                    "flex items-center h-10 px-3 border rounded-md",
                     startImmediately
                       ? "border-green-300 bg-green-50"
                       : "border-gray-300 bg-white"
                   )}>
-                  <input
-                    type='checkbox'
-                    id='startImmediately'
-                    checked={startImmediately}
-                    onChange={(e) => {
-                      setStartImmediately(e.target.checked);
-                      if (e.target.checked) {
-                        // When checked, set start date to now
-                        const now = new Date();
-                        form.setValue("startDate", now);
+                  <div className='flex items-center min-w-0'>
+                    <input
+                      type='checkbox'
+                      id='startImmediately'
+                      checked={startImmediately}
+                      onChange={(e) => {
+                        setStartImmediately(e.target.checked);
+                        if (e.target.checked) {
+                          // When checked, set start date to now
+                          const now = new Date();
+                          form.setValue("startDate", now);
 
-                        // Format the current time as HH:MM for the time input
-                        const hours = now
-                          .getHours()
-                          .toString()
-                          .padStart(2, "0");
-                        const minutes = now
-                          .getMinutes()
-                          .toString()
-                          .padStart(2, "0");
-                        form.setValue("startTime", `${hours}:${minutes}`);
+                          // Format the current time as HH:MM for the time input
+                          const hours = now
+                            .getHours()
+                            .toString()
+                            .padStart(2, "0");
+                          const minutes = now
+                            .getMinutes()
+                            .toString()
+                            .padStart(2, "0");
+                          form.setValue("startTime", `${hours}:${minutes}`);
 
-                        // Set status to active
-                        form.setValue("status", "active");
-                      } else {
-                        // When unchecked, set status back to scheduled
-                        form.setValue("status", "scheduled");
-                      }
-                    }}
-                    className='h-4 w-4 rounded border-gray-300 text-green-600 focus:ring-green-500'
-                  />
-                  <label
-                    htmlFor='startImmediately'
-                    className='text-sm font-medium cursor-pointer flex-grow'>
-                    Start immediately
-                  </label>
+                          // Set status to active
+                          form.setValue("status", "active");
+                        } else {
+                          // When unchecked, set status back to scheduled
+                          form.setValue("status", "scheduled");
+                        }
+                      }}
+                      className='h-4 w-4 rounded border-gray-300 text-green-600 focus:ring-green-500'
+                    />
+                    <label
+                      htmlFor='startImmediately'
+                      className='text-sm font-medium cursor-pointer ml-2 whitespace-nowrap'>
+                      Start immediately
+                    </label>
+                  </div>
                   {startImmediately && (
-                    <span className='text-xs text-green-700 bg-green-100 px-2 py-1 rounded'>
+                    <Badge
+                      variant='outline'
+                      className='ml-auto bg-green-50 text-green-700 border-green-200 text-xs'>
                       Now
-                    </span>
+                    </Badge>
                   )}
                 </div>
               </FormItem>
