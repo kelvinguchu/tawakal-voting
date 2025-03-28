@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { createClient } from "@/lib/supabase/client";
 import {
   Card,
   CardContent,
@@ -23,20 +22,18 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { toast } from "sonner";
-import { Poll, PollOption, Vote } from "@/lib/types/database";
+import { Poll, PollOption } from "@/lib/types/database";
 import { cn } from "@/lib/utils";
-import { motion } from "framer-motion";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import Image from "next/image";
 import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
 import { DrawerClose } from "@/components/ui/drawer";
+import { submitVote, getUserVote } from "@/app/actions/polls/vote-on-poll";
+import {
+  fetchPollWithOptions,
+  fetchPollOptionImages,
+} from "@/app/actions/polls/fetch-poll-data";
 
 // Format date helper function
 const formatDate = (dateString: string | null, includeTime = true) => {
@@ -55,7 +52,6 @@ interface PollDetailProps {
 }
 
 export function PollDetail({ pollId, userId }: PollDetailProps) {
-  const supabase = createClient();
   const [poll, setPoll] = useState<Poll | null>(null);
   const [options, setOptions] = useState<PollOption[]>([]);
   const [optionImages, setOptionImages] = useState<Record<string, string>>({});
@@ -66,93 +62,36 @@ export function PollDetail({ pollId, userId }: PollDetailProps) {
   const [results, setResults] = useState<Record<string, number>>({});
   const [totalVotes, setTotalVotes] = useState(0);
 
-  // Get poll details
+  // Get poll details using server actions
   useEffect(() => {
     const fetchPollDetails = async () => {
       setLoading(true);
       try {
-        // Fetch poll data
-        const { data: pollData, error: pollError } = await supabase
-          .from("polls")
-          .select("*")
-          .eq("id", pollId)
-          .single();
+        // Fetch poll data with options and vote counts using server action
+        const pollData = await fetchPollWithOptions(pollId, userId);
 
-        if (pollError) {
-          throw pollError;
+        if (!pollData) {
+          throw new Error("Failed to fetch poll data");
         }
 
         setPoll(pollData);
+        setOptions(pollData.poll_options || []);
 
-        // Fetch poll options
-        const { data: optionsData, error: optionsError } = await supabase
-          .from("poll_options")
-          .select("*")
-          .eq("poll_id", pollId);
-
-        if (optionsError) {
-          throw optionsError;
+        // Set user's vote if they've already voted
+        if (pollData.user_vote) {
+          setUserVote(pollData.user_vote);
+          setSelectedOption(pollData.user_vote);
         }
 
-        setOptions(optionsData);
-
-        // Check if user has already voted
-        const { data: voteData, error: voteError } = await supabase
-          .from("votes")
-          .select("option_id")
-          .eq("poll_id", pollId)
-          .eq("user_id", userId)
-          .single();
-
-        if (voteData) {
-          setUserVote(voteData.option_id);
-          setSelectedOption(voteData.option_id);
+        // Set results from the fetched data
+        if (pollData.results) {
+          setResults(pollData.results);
+          setTotalVotes(pollData.total_votes || 0);
         }
 
-        // Fetch votes and count them manually instead of using group
-        const { data: votesData, error: votesError } = await supabase
-          .from("votes")
-          .select("option_id")
-          .eq("poll_id", pollId);
-
-        if (!votesError && votesData) {
-          const resultsObj: Record<string, number> = {};
-          let total = 0;
-
-          // Count by iterating through the votes
-          for (const vote of votesData) {
-            if (!resultsObj[vote.option_id]) {
-              resultsObj[vote.option_id] = 0;
-            }
-            resultsObj[vote.option_id]++;
-            total++;
-          }
-
-          setResults(resultsObj);
-          setTotalVotes(total);
-        }
-
-        // Fetch option images
-        for (const option of optionsData) {
-          const { data: mediaData, error: mediaError } = await supabase
-            .from("option_media")
-            .select("storage_path")
-            .eq("option_id", option.id)
-            .single();
-
-          if (!mediaError && mediaData) {
-            const { data: imageUrl } = await supabase.storage
-              .from("vote-media")
-              .createSignedUrl(mediaData.storage_path, 60 * 60); // 1 hour expiry
-
-            if (imageUrl) {
-              setOptionImages((prev) => ({
-                ...prev,
-                [option.id]: imageUrl.signedUrl,
-              }));
-            }
-          }
-        }
+        // Fetch option images using server action
+        const images = await fetchPollOptionImages(pollId);
+        setOptionImages(images);
       } catch (error) {
         console.error("Error fetching poll details:", error);
         toast.error("Failed to load poll details");
@@ -162,7 +101,7 @@ export function PollDetail({ pollId, userId }: PollDetailProps) {
     };
 
     fetchPollDetails();
-  }, [pollId, userId, supabase]);
+  }, [pollId, userId]);
 
   const handleVote = async () => {
     if (!selectedOption) {
@@ -173,53 +112,22 @@ export function PollDetail({ pollId, userId }: PollDetailProps) {
     setSubmitting(true);
 
     try {
-      // Check if poll is still active
-      if (poll?.status !== "active") {
-        toast.error("This poll is no longer active");
+      // Call the server action for vote submission
+      const result = await submitVote(pollId, selectedOption);
+
+      if (!result.success) {
+        toast.error(result.message);
         return;
       }
 
-      // Submit vote
-      const { data, error } = await supabase.from("votes").insert({
-        poll_id: pollId,
-        option_id: selectedOption,
-        user_id: userId,
-      });
+      setUserVote(result.optionId || selectedOption);
+      toast.success(result.message);
 
-      if (error) {
-        console.error("Error submitting vote:", error);
-        if (error.code === "23505") {
-          toast.error("You have already voted in this poll");
-        } else {
-          toast.error("Failed to submit vote. Please try again.");
-        }
-        return;
-      }
-
-      setUserVote(selectedOption);
-      toast.success("Your vote has been submitted successfully!");
-
-      // Refetch votes and count them manually
-      const { data: votesData, error: votesError } = await supabase
-        .from("votes")
-        .select("option_id")
-        .eq("poll_id", pollId);
-
-      if (!votesError && votesData) {
-        const resultsObj: Record<string, number> = {};
-        let total = 0;
-
-        // Count by iterating through the votes
-        for (const vote of votesData) {
-          if (!resultsObj[vote.option_id]) {
-            resultsObj[vote.option_id] = 0;
-          }
-          resultsObj[vote.option_id]++;
-          total++;
-        }
-
-        setResults(resultsObj);
-        setTotalVotes(total);
+      // Refetch poll data to get updated vote counts
+      const updatedPoll = await fetchPollWithOptions(pollId, userId);
+      if (updatedPoll && updatedPoll.results) {
+        setResults(updatedPoll.results);
+        setTotalVotes(updatedPoll.total_votes || 0);
       }
     } catch (error) {
       console.error("Error submitting vote:", error);
@@ -265,9 +173,39 @@ export function PollDetail({ pollId, userId }: PollDetailProps) {
   };
 
   const statusInfo = getPollStatusInfo();
-  const isPollActive = poll?.status === "active";
+
+  // Helper function to check if a date is within a few minutes of now
+  const isNearCurrentTime = (
+    dateString: string | null,
+    minutes: number = 5
+  ): boolean => {
+    if (!dateString) return false;
+
+    const date = new Date(dateString);
+    const now = new Date();
+
+    // Check if the date is within X minutes of current time
+    const timeWindow = minutes * 60 * 1000; // X minutes in milliseconds
+    return Math.abs(date.getTime() - now.getTime()) < timeWindow;
+  };
+
+  // Simplified logic that relies more on the database status
+  // and only adjusts for edge cases
+  const isPollAcceptingVotes =
+    poll?.status === "active" &&
+    poll.end_time &&
+    new Date() < new Date(poll.end_time);
+
+  const isPollScheduled = poll?.status === "scheduled";
+
+  const isPollClosed =
+    poll?.status === "closed" ||
+    (poll?.status === "active" &&
+      poll.end_time &&
+      new Date() >= new Date(poll.end_time));
+
   const hasVoted = !!userVote;
-  const showResults = hasVoted || !isPollActive;
+  const showResults = hasVoted || isPollScheduled || isPollClosed;
 
   if (loading) {
     return <PollDetailSkeleton />;
@@ -334,7 +272,7 @@ export function PollDetail({ pollId, userId }: PollDetailProps) {
           )}
 
           {/* Display alert if user has already voted */}
-          {hasVoted && isPollActive && (
+          {hasVoted && isPollAcceptingVotes && (
             <Alert className='bg-tawakal-green/10 border-tawakal-green/20'>
               <CheckCircle2 className='h-4 w-4 text-tawakal-green' />
               <AlertTitle className='text-tawakal-green'>
@@ -347,7 +285,7 @@ export function PollDetail({ pollId, userId }: PollDetailProps) {
           )}
 
           {/* Display alert if poll is closed */}
-          {!isPollActive && poll.status === "closed" && (
+          {isPollClosed && (
             <Alert className='bg-tawakal-gold/10 border-tawakal-gold/20'>
               <TimerOff className='h-4 w-4 text-tawakal-gold' />
               <AlertTitle className='text-tawakal-gold'>
@@ -360,15 +298,15 @@ export function PollDetail({ pollId, userId }: PollDetailProps) {
           )}
 
           {/* Display alert if poll is scheduled */}
-          {!isPollActive && poll.status === "scheduled" && (
+          {isPollScheduled && (
             <Alert className='bg-tawakal-blue/10 border-tawakal-blue/20'>
               <Calendar className='h-4 w-4 text-tawakal-blue' />
               <AlertTitle className='text-tawakal-blue'>
                 Poll is scheduled
               </AlertTitle>
               <AlertDescription>
-                This poll is not yet active. Voting will begin on{" "}
-                {formatDate(poll.start_time)}.
+                This poll will open for voting on {formatDate(poll.start_time)}.
+                Please check back then to cast your vote.
               </AlertDescription>
             </Alert>
           )}
@@ -460,7 +398,7 @@ export function PollDetail({ pollId, userId }: PollDetailProps) {
               Close
             </Button>
           </DrawerClose>
-          {isPollActive && !hasVoted && (
+          {isPollAcceptingVotes && !hasVoted && !isPollScheduled && (
             <Button
               onClick={handleVote}
               disabled={!selectedOption || submitting}
@@ -473,6 +411,14 @@ export function PollDetail({ pollId, userId }: PollDetailProps) {
               ) : (
                 "Submit Vote"
               )}
+            </Button>
+          )}
+          {isPollScheduled && (
+            <Button
+              disabled
+              className='bg-tawakal-blue/20 text-tawakal-blue cursor-not-allowed'>
+              <Calendar className='mr-2 h-4 w-4' />
+              Opens {formatDate(poll.start_time, false)}
             </Button>
           )}
         </CardFooter>

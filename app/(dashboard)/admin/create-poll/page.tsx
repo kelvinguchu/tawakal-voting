@@ -19,37 +19,25 @@ import {
 import { ChevronRight, Home, PlusCircle } from "lucide-react";
 
 export default async function CreatePollPage() {
+  // Check authentication and authorization
   const supabase = await createClient();
 
-  // Get the user session and authenticate it
-  const {
-    data: { session },
-  } = await supabase.auth.getSession();
+  // Use the more secure getUser method
+  const { data: userData, error: authError } = await supabase.auth.getUser();
 
-  // Redirect if not authenticated
-  if (!session) {
+  if (authError || !userData.user) {
     redirect("/login");
   }
 
-  // Verify the user with a secure method
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  // Double-check authentication
-  if (!user) {
-    redirect("/login");
-  }
-
-  // Get the user data
-  const { data: userData } = await supabase
+  // Check if user has admin role
+  const { data: userRole, error: roleError } = await supabase
     .from("users")
-    .select("*")
-    .eq("id", user.id)
+    .select("role")
+    .eq("id", userData.user.id)
     .single();
 
-  // Redirect if not an admin
-  if (userData?.role !== "admin") {
+  if (roleError || !userRole || userRole.role !== "admin") {
+    // Redirect non-admins to dashboard
     redirect("/dashboard");
   }
 
@@ -85,7 +73,7 @@ export default async function CreatePollPage() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <CreatePollForm userId={userData.id} userRole={userData.role} />
+          <CreatePollForm userId={userData.user.id} userRole={userRole.role} />
         </CardContent>
       </Card>
     </div>

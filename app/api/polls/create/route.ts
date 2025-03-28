@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
-import { createAdminClient } from "@/lib/supabase/admin";
 import { cookies } from "next/headers";
 
 export async function POST(request: Request) {
@@ -11,37 +10,17 @@ export async function POST(request: Request) {
     // Create Supabase client with server context
     const supabase = await createClient();
 
-    // Log current authentication state for debugging
-    const {
-      data: { session },
-    } = await supabase.auth.getSession();
+    // Use the more secure method to get authenticated user
+    const { data: userData, error: authError } = await supabase.auth.getUser();
 
-    console.log(
-      "Session in API route:",
-      session ? "Exists" : "None",
-      session?.user?.id ? `User ID: ${session.user.id}` : "No user ID"
-    );
-
-    if (!session) {
+    if (authError || !userData.user) {
       return NextResponse.json(
         { message: "Unauthorized: You must be logged in" },
         { status: 401 }
       );
     }
 
-    // Get the user from the session
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-
-    if (!user) {
-      return NextResponse.json(
-        { message: "Unauthorized: User not found" },
-        { status: 401 }
-      );
-    }
-
-    console.log("API authenticated as user:", user.id);
+    const user = userData.user;
 
     // Parse request body first to get information
     const requestData = await request.json();
@@ -65,23 +44,23 @@ export async function POST(request: Request) {
     });
 
     // Get user data to verify admin role
-    const { data: userData, error: userError } = await supabase
+    const { data: userDbData, error: userDbError } = await supabase
       .from("users")
       .select("role")
       .eq("id", user.id)
       .single();
 
-    if (userError) {
-      console.error("Error fetching user data:", userError);
+    if (userDbError) {
+      console.error("Error fetching user data:", userDbError);
       return NextResponse.json(
         {
-          message: `Unauthorized: Failed to fetch user data: ${userError.message}`,
+          message: `Unauthorized: Failed to fetch user data: ${userDbError.message}`,
         },
         { status: 401 }
       );
     }
 
-    if (!userData) {
+    if (!userDbData) {
       console.error("No user data found");
       return NextResponse.json(
         { message: "Unauthorized: User data not found" },
@@ -89,9 +68,9 @@ export async function POST(request: Request) {
       );
     }
 
-    console.log("User role from database:", userData.role);
+    console.log("User role from database:", userDbData.role);
 
-    if (userData.role !== "admin") {
+    if (userDbData.role !== "admin") {
       return NextResponse.json(
         { message: "Forbidden: Only administrators can create polls" },
         { status: 403 }
@@ -115,24 +94,11 @@ export async function POST(request: Request) {
       );
     }
 
-    // Use the admin-level service role client if available
-    // Alternatively, try a direct database query to bypass RLS
     try {
-      console.log("Attempting to create poll with user role:", userData.role);
-
-      // Create admin client that bypasses RLS
-      let adminClient;
-      try {
-        adminClient = createAdminClient();
-        console.log("Admin client created successfully");
-      } catch (adminError) {
-        console.error("Failed to create admin client:", adminError);
-        // Fall back to regular client if admin client fails
-        adminClient = supabase;
-      }
+      console.log("Attempting to create poll with user role:", userDbData.role);
 
       // 1. Create poll as draft
-      const { data: poll, error: pollError } = await adminClient
+      const { data: poll, error: pollError } = await supabase
         .from("polls")
         .insert({
           title,
@@ -148,23 +114,23 @@ export async function POST(request: Request) {
       if (pollError) {
         console.error("Error creating poll:", pollError);
 
-        // If we get an RLS violation, try to diagnose the issue
+        // If we still get an RLS violation, provide helpful error
         if (pollError.code === "42501") {
           console.error(
             "RLS policy violation. Session user:",
             user.id,
             "Database user role:",
-            userData.role
+            userDbData.role
           );
           console.error(
-            "Make sure the RLS policy allows admins to insert rows"
+            "Make sure the is_admin() function is working properly"
           );
 
           return NextResponse.json(
             {
               message: `RLS error: The current user doesn't have permission to create polls.`,
               details:
-                "Please check that your authentication is working properly and that your RLS policies are configured correctly.",
+                "Please check that the is_admin() function is working properly.",
             },
             { status: 500 }
           );
@@ -180,7 +146,7 @@ export async function POST(request: Request) {
 
       // 2. Add poll options
       for (const option of validOptions) {
-        const { data: optionData, error: optionError } = await adminClient
+        const { data: optionData, error: optionError } = await supabase
           .from("poll_options")
           .insert({
             poll_id: poll.id,
@@ -202,7 +168,7 @@ export async function POST(request: Request) {
       if (mediaItems && mediaItems.length > 0) {
         for (const item of mediaItems) {
           if (item.type === "link" && item.url) {
-            const { error: mediaError } = await adminClient
+            const { error: mediaError } = await supabase
               .from("poll_media")
               .insert({
                 poll_id: poll.id,
@@ -214,12 +180,26 @@ export async function POST(request: Request) {
             if (mediaError) {
               console.error("Error adding media link:", mediaError);
             }
+          } else if (item.type === "document" && item.url) {
+            // Handle document links (like Google Docs)
+            const { error: mediaError } = await supabase
+              .from("poll_media")
+              .insert({
+                poll_id: poll.id,
+                media_type: "document",
+                media_url: item.url,
+                description: item.description || null,
+              });
+
+            if (mediaError) {
+              console.error("Error adding document link:", mediaError);
+            }
           }
         }
       }
 
       // 4. Update poll status to the desired status
-      const { error: updateError } = await adminClient
+      const { error: updateError } = await supabase
         .from("polls")
         .update({ status })
         .eq("id", poll.id);

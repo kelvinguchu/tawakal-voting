@@ -48,7 +48,7 @@ const formSchema = z.object({
     message: "Title must be at least 3 characters.",
   }),
   description: z.string().optional().default(""),
-  status: z.enum(["draft", "scheduled", "active"]),
+  status: z.enum(["scheduled", "active"]),
   startDate: z.date({
     required_error: "Start date is required.",
   }),
@@ -102,6 +102,7 @@ export function CreatePollForm({
   const [documentInputType, setDocumentInputType] = useState<"upload" | "link">(
     "link"
   );
+  const [startImmediately, setStartImmediately] = useState(false);
   const supabase = createClient();
 
   const form = useForm<z.infer<typeof formSchema>>({
@@ -109,7 +110,7 @@ export function CreatePollForm({
     defaultValues: {
       title: "",
       description: "",
-      status: "active",
+      status: "scheduled",
       startTime: "12:00",
       duration: 5,
       options: [
@@ -212,6 +213,7 @@ export function CreatePollForm({
       duration: values.duration,
       optionsCount: values.options.length,
       mediaCount: values.media?.length || 0,
+      startImmediately,
     });
     console.log("User ID:", userId);
     console.log("User role:", userRole);
@@ -262,27 +264,33 @@ export function CreatePollForm({
     setIsSubmitting(true);
 
     try {
-      const startDateTime = new Date(values.startDate);
-      const [hours, minutes] = values.startTime.split(":").map(Number);
-      startDateTime.setHours(hours, minutes, 0, 0);
+      let startDateTime = new Date(values.startDate);
 
-      const endDateTime = calculateEndTime(
-        values.startDate,
-        values.startTime,
-        values.duration
-      );
+      // If starting immediately, use current time
+      if (startImmediately) {
+        startDateTime = new Date(); // Current time
+      } else {
+        // Otherwise use the selected date and time
+        const [hours, minutes] = values.startTime.split(":").map(Number);
+        startDateTime.setHours(hours, minutes, 0, 0);
+      }
 
+      // Calculate end time directly using the start date/time with the duration
+      const endDateTime = addHours(startDateTime, values.duration);
+
+      // Status is determined by the Start immediately checkbox
+      // This should already be set correctly in the form values
       console.log("Poll data to insert:", {
         title: values.title,
         description: values.description || "",
         start_time: startDateTime.toISOString(),
         end_time: endDateTime.toISOString(),
         created_by: userId,
-        status: "draft",
+        status: values.status,
+        starts_immediately: startImmediately,
       });
 
-      // Use server-side API to create the poll to bypass RLS issues
-      // We'll create an API route for this
+      // Use server-side API to create the poll
       const response = await fetch("/api/polls/create", {
         method: "POST",
         headers: {
@@ -294,9 +302,18 @@ export function CreatePollForm({
           start_time: startDateTime.toISOString(),
           end_time: endDateTime.toISOString(),
           created_by: userId,
-          validOptions,
+          validOptions: validOptions.map((opt) => ({ text: opt.text })), // Only send the text for now, we'll upload images separately
           status: values.status,
-          mediaItems: values.media,
+          mediaItems: values.media
+            .filter(
+              (item) =>
+                item.type === "link" || (item.type === "document" && item.url)
+            ) // Only include links here
+            .map((item) => ({
+              type: item.type,
+              url: item.url,
+              description: item.description || "",
+            })),
         }),
       });
 
@@ -307,8 +324,116 @@ export function CreatePollForm({
       }
 
       const { pollId } = await response.json();
-
       console.log("Poll created successfully with ID:", pollId);
+
+      // Now handle file uploads for options with images
+      const optionUploadPromises = [];
+
+      // First, upload option images
+      for (let i = 0; i < validOptions.length; i++) {
+        const option = validOptions[i];
+        if (option.image instanceof File) {
+          console.log(`Preparing to upload option image for option #${i + 1}`);
+
+          // Get the option ID - we need to find it from the backend since it was just created
+          const { data: optionData } = await supabase
+            .from("poll_options")
+            .select("id")
+            .eq("poll_id", pollId)
+            .eq("option_text", option.text)
+            .single();
+
+          if (!optionData?.id) {
+            console.error(
+              `Could not find option ID for option: ${option.text}`
+            );
+            continue;
+          }
+
+          console.log(
+            `Found option ID: ${optionData.id} for option text: ${option.text}`
+          );
+
+          // Upload the image file
+          const formData = new FormData();
+          formData.append("file", option.image);
+          formData.append("optionId", optionData.id);
+          formData.append("mediaType", "image");
+          if (option.imageDescription) {
+            formData.append("description", option.imageDescription);
+          }
+
+          const uploadPromise = fetch("/api/polls/upload", {
+            method: "POST",
+            body: formData,
+          })
+            .then((res) => {
+              if (!res.ok) {
+                console.error(
+                  `Failed to upload image for option ${option.text}`
+                );
+                return res.json().then((data) => Promise.reject(data));
+              }
+              return res.json();
+            })
+            .then((data) => {
+              console.log(
+                `Successfully uploaded option image: ${data.filePath}`
+              );
+              return data;
+            })
+            .catch((err) => {
+              console.error("Option image upload error:", err);
+              return null;
+            });
+
+          optionUploadPromises.push(uploadPromise);
+        }
+      }
+
+      // Now handle file uploads for poll media attachments
+      const mediaUploadPromises = [];
+      for (const mediaItem of values.media || []) {
+        if (mediaItem.file instanceof File) {
+          console.log(`Preparing to upload poll media: ${mediaItem.file.name}`);
+
+          const formData = new FormData();
+          formData.append("file", mediaItem.file);
+          formData.append("pollId", pollId);
+          formData.append("mediaType", mediaItem.type);
+          if (mediaItem.description) {
+            formData.append("description", mediaItem.description);
+          }
+
+          const uploadPromise = fetch("/api/polls/upload", {
+            method: "POST",
+            body: formData,
+          })
+            .then((res) => {
+              if (!res.ok) {
+                console.error(`Failed to upload media ${mediaItem.file?.name}`);
+                return res.json().then((data) => Promise.reject(data));
+              }
+              return res.json();
+            })
+            .then((data) => {
+              console.log(`Successfully uploaded poll media: ${data.filePath}`);
+              return data;
+            })
+            .catch((err) => {
+              console.error("Poll media upload error:", err);
+              return null;
+            });
+
+          mediaUploadPromises.push(uploadPromise);
+        }
+      }
+
+      // Wait for all uploads to complete
+      await Promise.allSettled([
+        ...optionUploadPromises,
+        ...mediaUploadPromises,
+      ]);
 
       toast.success("Poll created successfully!");
       form.reset();
@@ -316,7 +441,6 @@ export function CreatePollForm({
         onSuccess();
       } else {
         // Redirect to polls page if no onSuccess handler
-        window.location.href = "/polls";
       }
     } catch (error) {
       console.error("Error creating poll:", error);
@@ -340,21 +464,23 @@ export function CreatePollForm({
 
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)} className='flex flex-col'>
+      <form
+        onSubmit={form.handleSubmit(onSubmit)}
+        className='flex flex-col space-y-8'>
         <div className='space-y-6'>
           <FormField
             control={form.control}
             name='title'
             render={({ field }) => (
               <FormItem>
-                <FormLabel className='text-tawakal-blue font-medium'>
+                <FormLabel className='text-gray-700 font-medium'>
                   Poll Title
                 </FormLabel>
                 <FormControl>
                   <Input
                     placeholder='Enter a question or title'
                     {...field}
-                    className='border border-tawakal-blue/30 focus-visible:ring-tawakal-blue focus-visible:border-tawakal-blue'
+                    className='border-gray-300 focus-visible:ring-tawakal-blue focus-visible:border-tawakal-blue'
                   />
                 </FormControl>
                 <FormMessage />
@@ -367,7 +493,7 @@ export function CreatePollForm({
             name='description'
             render={({ field }) => (
               <FormItem>
-                <FormLabel className='text-tawakal-blue font-medium'>
+                <FormLabel className='text-gray-700 font-medium'>
                   Description{" "}
                   <span className='text-muted-foreground text-xs'>
                     (optional)
@@ -376,7 +502,7 @@ export function CreatePollForm({
                 <FormControl>
                   <Textarea
                     placeholder='Provide more details about this poll'
-                    className='min-h-[100px] border border-tawakal-blue/30 focus-visible:ring-tawakal-blue focus-visible:border-tawakal-blue'
+                    className='min-h-[100px] border-gray-300 focus-visible:ring-tawakal-blue focus-visible:border-tawakal-blue'
                     {...field}
                   />
                 </FormControl>
@@ -389,151 +515,192 @@ export function CreatePollForm({
             control={form.control}
             name='status'
             render={({ field }) => (
-              <FormItem>
-                <FormLabel className='text-tawakal-blue font-medium'>
-                  Status
-                </FormLabel>
-                <Select
-                  onValueChange={field.onChange}
-                  defaultValue={field.value}>
-                  <FormControl>
-                    <SelectTrigger className='border border-tawakal-blue/30 focus-visible:ring-tawakal-blue focus-visible:border-tawakal-blue'>
-                      <SelectValue placeholder='Select poll status' />
-                    </SelectTrigger>
-                  </FormControl>
-                  <SelectContent>
-                    <SelectItem value='draft'>Draft</SelectItem>
-                    <SelectItem value='scheduled'>Scheduled</SelectItem>
-                    <SelectItem value='active'>Active</SelectItem>
-                  </SelectContent>
-                </Select>
+              <FormItem className='mb-2'>
+                <div className='flex items-center gap-2 mb-1'>
+                  <div
+                    className={cn(
+                      "w-2 h-2 rounded-full",
+                      field.value === "active" ? "bg-green-500" : "bg-blue-500"
+                    )}
+                  />
+                  <span className='text-sm font-medium text-gray-700'>
+                    {field.value === "active"
+                      ? "Poll will start immediately"
+                      : "Poll will start at scheduled time"}
+                  </span>
+                </div>
                 <FormMessage />
               </FormItem>
             )}
           />
 
-          <div className='grid grid-cols-1 md:grid-cols-3 gap-6'>
-            <FormField
-              control={form.control}
-              name='startDate'
-              render={({ field }) => (
-                <FormItem className='flex flex-col'>
-                  <FormLabel className='text-tawakal-blue font-medium'>
-                    Start Date
-                  </FormLabel>
-                  <Popover>
-                    <PopoverTrigger asChild>
-                      <FormControl>
-                        <Button
-                          variant='outline'
+          <div className='grid grid-cols-1 md:grid-cols-12 gap-6'>
+            <div className='md:col-span-5'>
+              <FormField
+                control={form.control}
+                name='startDate'
+                render={({ field }) => (
+                  <FormItem className='flex flex-col'>
+                    <FormLabel className='text-gray-700 font-medium'>
+                      Start Date
+                    </FormLabel>
+                    <div className='space-y-4'>
+                      <div className='flex items-center'>
+                        <input
+                          type='checkbox'
+                          id='startImmediately'
+                          checked={startImmediately}
+                          onChange={(e) => {
+                            setStartImmediately(e.target.checked);
+                            if (e.target.checked) {
+                              // When checked, set start date to now
+                              field.onChange(new Date());
+                              // Set status to active
+                              form.setValue("status", "active");
+                            } else {
+                              // When unchecked, set status back to scheduled
+                              form.setValue("status", "scheduled");
+                            }
+                          }}
+                          className='h-4 w-4 rounded border-tawakal-blue/30 text-tawakal-blue focus:ring-tawakal-blue'
+                        />
+                        <label
+                          htmlFor='startImmediately'
+                          className='ml-2 text-sm font-medium text-gray-700'>
+                          Start poll immediately
+                        </label>
+                      </div>
+
+                      {!startImmediately && (
+                        <Popover>
+                          <PopoverTrigger asChild>
+                            <FormControl>
+                              <Button
+                                variant='outline'
+                                className={cn(
+                                  "w-full pl-3 text-left font-normal border border-gray-300 bg-white hover:bg-gray-50",
+                                  !field.value && "text-muted-foreground"
+                                )}>
+                                {field.value ? (
+                                  format(field.value, "PPP")
+                                ) : (
+                                  <span>Pick a date</span>
+                                )}
+                                <CalendarIcon className='ml-auto h-4 w-4 opacity-70' />
+                              </Button>
+                            </FormControl>
+                          </PopoverTrigger>
+                          <PopoverContent className='w-auto p-0' align='start'>
+                            <Calendar
+                              mode='single'
+                              selected={field.value}
+                              onSelect={field.onChange}
+                              disabled={(date) => date < new Date()}
+                              initialFocus
+                            />
+                          </PopoverContent>
+                        </Popover>
+                      )}
+                    </div>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
+
+            <div className='md:col-span-3'>
+              <FormField
+                control={form.control}
+                name='startTime'
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className='text-gray-700 font-medium'>
+                      Start Time
+                    </FormLabel>
+                    <FormControl>
+                      <div className='relative'>
+                        <Input
+                          type='time'
+                          {...field}
+                          disabled={startImmediately}
                           className={cn(
-                            "pl-3 text-left font-normal border border-tawakal-blue/30 w-full",
-                            !field.value && "text-muted-foreground"
-                          )}>
-                          {field.value ? (
-                            format(field.value, "PPP")
-                          ) : (
-                            <span>Pick a date</span>
+                            "pl-9 border-gray-300 focus-visible:ring-tawakal-blue focus-visible:border-tawakal-blue",
+                            startImmediately && "opacity-50 bg-gray-50"
                           )}
-                          <CalendarIcon className='ml-auto h-4 w-4 text-tawakal-blue opacity-70' />
+                        />
+                        <Clock className='absolute left-3 top-2.5 h-4 w-4 text-gray-500' />
+                      </div>
+                    </FormControl>
+                    {startImmediately && (
+                      <p className='text-xs text-gray-500 mt-1'>
+                        Current time will be used
+                      </p>
+                    )}
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
+
+            <div className='md:col-span-4'>
+              <FormField
+                control={form.control}
+                name='duration'
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className='text-gray-700 font-medium'>
+                      Duration (hours)
+                    </FormLabel>
+                    <FormControl>
+                      <div className='flex items-center'>
+                        <Button
+                          type='button'
+                          variant='outline'
+                          size='icon'
+                          className='h-10 w-10 rounded-r-none border-gray-300 text-gray-700'
+                          onClick={() => {
+                            const currentValue = field.value || 1;
+                            if (currentValue > 1) {
+                              field.onChange(currentValue - 1);
+                            }
+                          }}>
+                          -
                         </Button>
-                      </FormControl>
-                    </PopoverTrigger>
-                    <PopoverContent className='w-auto p-0' align='start'>
-                      <Calendar
-                        mode='single'
-                        selected={field.value}
-                        onSelect={field.onChange}
-                        disabled={(date) => date < new Date()}
-                        initialFocus
-                      />
-                    </PopoverContent>
-                  </Popover>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <FormField
-              control={form.control}
-              name='startTime'
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel className='text-tawakal-blue font-medium'>
-                    Start Time
-                  </FormLabel>
-                  <FormControl>
-                    <div className='relative'>
-                      <Input
-                        type='time'
-                        {...field}
-                        className='pl-9 border border-tawakal-blue/30 focus-visible:ring-tawakal-blue focus-visible:border-tawakal-blue'
-                      />
-                      <Clock className='absolute left-3 top-2.5 h-4 w-4 text-tawakal-blue opacity-70' />
-                    </div>
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <FormField
-              control={form.control}
-              name='duration'
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel className='text-tawakal-blue font-medium'>
-                    Duration (hours)
-                  </FormLabel>
-                  <FormControl>
-                    <div className='flex items-center space-x-2'>
-                      <Button
-                        type='button'
-                        variant='outline'
-                        size='icon'
-                        className='h-9 w-9 border border-tawakal-gold text-tawakal-gold hover:bg-tawakal-gold/10'
-                        onClick={() => {
-                          const currentValue = field.value || 1;
-                          if (currentValue > 1) {
-                            field.onChange(currentValue - 1);
-                          }
-                        }}>
-                        -
-                      </Button>
-                      <Input
-                        type='number'
-                        min={1}
-                        className='text-center border border-tawakal-blue/30 focus-visible:ring-tawakal-blue focus-visible:border-tawakal-blue'
-                        {...field}
-                        onChange={(e) => {
-                          const value = parseInt(e.target.value);
-                          if (!isNaN(value) && value > 0) {
-                            field.onChange(value);
-                          }
-                        }}
-                      />
-                      <Button
-                        type='button'
-                        variant='outline'
-                        size='icon'
-                        className='h-9 w-9 border border-tawakal-gold text-tawakal-gold hover:bg-tawakal-gold/10'
-                        onClick={() => {
-                          const currentValue = field.value || 0;
-                          field.onChange(currentValue + 1);
-                        }}>
-                        +
-                      </Button>
-                    </div>
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+                        <Input
+                          type='number'
+                          min={1}
+                          className='h-10 text-center rounded-none border-x-0 border-gray-300'
+                          {...field}
+                          onChange={(e) => {
+                            const value = parseInt(e.target.value);
+                            if (!isNaN(value) && value > 0) {
+                              field.onChange(value);
+                            }
+                          }}
+                        />
+                        <Button
+                          type='button'
+                          variant='outline'
+                          size='icon'
+                          className='h-10 w-10 rounded-l-none border-gray-300 text-gray-700'
+                          onClick={() => {
+                            const currentValue = field.value || 0;
+                            field.onChange(currentValue + 1);
+                          }}>
+                          +
+                        </Button>
+                      </div>
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
           </div>
 
-          <div className='pt-2'>
-            <div className='flex justify-between items-center mb-3'>
-              <FormLabel className='text-tawakal-blue font-medium text-base'>
+          <div className='pt-4 border-t'>
+            <div className='flex justify-between items-center mb-4'>
+              <FormLabel className='text-gray-700 font-medium text-base m-0'>
                 Poll Options
               </FormLabel>
               <Button
@@ -541,15 +708,17 @@ export function CreatePollForm({
                 variant='outline'
                 size='sm'
                 onClick={addOption}
-                className='flex items-center gap-1 border-tawakal-gold text-tawakal-gold hover:bg-tawakal-gold/10'>
+                className='flex items-center gap-1 border-gray-300 hover:bg-gray-50 text-gray-700'>
                 <Plus className='h-4 w-4' />
                 <span>Add Option</span>
               </Button>
             </div>
 
-            <div className='space-y-3 pr-1 pb-1'>
+            <div className='space-y-4'>
               {form.watch("options").map((option, index) => (
-                <div key={index} className='space-y-2'>
+                <div
+                  key={index}
+                  className='space-y-3 p-4 border rounded-md bg-gray-50'>
                   <div className='flex gap-2'>
                     <FormField
                       control={form.control}
@@ -560,7 +729,7 @@ export function CreatePollForm({
                             <Input
                               placeholder={`Option ${index + 1}`}
                               {...field}
-                              className='border-tawakal-blue/30 focus-visible:ring-tawakal-blue/50'
+                              className='border-gray-300 focus-visible:ring-tawakal-blue focus-visible:border-tawakal-blue'
                             />
                           </FormControl>
                           <FormMessage />
@@ -573,17 +742,17 @@ export function CreatePollForm({
                       size='icon'
                       onClick={() => removeOption(index)}
                       disabled={form.watch("options").length <= 2}
-                      className='text-tawakal-red/70 hover:text-tawakal-red hover:bg-tawakal-red/10'>
+                      className='text-gray-500 hover:text-red-500 hover:bg-red-50'>
                       <Trash2 className='h-4 w-4' />
                     </Button>
                   </div>
 
                   {/* Option image upload */}
-                  <div className='flex items-center gap-2 ml-2 mt-1'>
+                  <div className='flex gap-2'>
                     <div className='flex-1'>
                       <div className='flex items-center mb-1'>
-                        <span className='text-xs text-tawakal-blue/60 font-medium'>
-                          Option Image (e.g., candidate photo)
+                        <span className='text-xs text-gray-500 font-medium'>
+                          Image (optional)
                         </span>
                       </div>
                       <div className='flex gap-2'>
@@ -591,7 +760,7 @@ export function CreatePollForm({
                           type='file'
                           accept='image/*'
                           id={`option-image-${index}`}
-                          className='flex-1 text-xs border-tawakal-blue/30 focus-visible:ring-tawakal-blue/50'
+                          className='flex-1 text-xs border-gray-300'
                           onChange={(e) => {
                             const file = e.target.files?.[0];
                             handleOptionImageChange(
@@ -613,18 +782,18 @@ export function CreatePollForm({
                               e.target.value
                             );
                           }}
-                          className='flex-1 text-xs border-tawakal-blue/30 focus-visible:ring-tawakal-blue/50'
+                          className='flex-1 text-xs border-gray-300'
                         />
                       </div>
                       {option.image && (
-                        <div className='flex items-center mt-1 text-xs text-tawakal-green'>
+                        <div className='flex items-center mt-1 text-xs text-green-600'>
                           <Upload className='h-3 w-3 mr-1' />
                           <span className='truncate'>{option.image.name}</span>
                           <Button
                             type='button'
                             variant='ghost'
                             size='sm'
-                            className='ml-auto h-5 w-5 p-0 text-tawakal-red/70'
+                            className='ml-auto h-5 w-5 p-0 text-gray-400 hover:text-red-400'
                             onClick={() =>
                               handleOptionImageChange(index, undefined, "")
                             }>
@@ -645,15 +814,15 @@ export function CreatePollForm({
           </div>
 
           {/* Media Attachments Section */}
-          <div className='border border-tawakal-blue/20 rounded-md p-5 bg-tawakal-blue/5'>
+          <div className='border border-gray-300 rounded-md p-5 bg-gray-50 mt-8'>
             <div className='flex justify-between items-center mb-4'>
-              <FormLabel className='text-tawakal-blue font-medium text-base'>
-                Media Attachments
+              <FormLabel className='text-gray-700 font-medium text-base m-0'>
+                Media Attachments (Optional)
               </FormLabel>
             </div>
 
             <Tabs value={mediaTab} onValueChange={setMediaTab}>
-              <TabsList className='grid w-full grid-cols-3 mb-4 bg-tawakal-blue/10'>
+              <TabsList className='grid w-full grid-cols-3 mb-4 bg-white border'>
                 <TabsTrigger
                   value='link'
                   className='data-[state=active]:bg-tawakal-blue data-[state=active]:text-white'>
@@ -661,12 +830,12 @@ export function CreatePollForm({
                 </TabsTrigger>
                 <TabsTrigger
                   value='image'
-                  className='data-[state=active]:bg-tawakal-green data-[state=active]:text-white'>
+                  className='data-[state=active]:bg-tawakal-blue data-[state=active]:text-white'>
                   Image
                 </TabsTrigger>
                 <TabsTrigger
                   value='document'
-                  className='data-[state=active]:bg-tawakal-gold data-[state=active]:text-white'>
+                  className='data-[state=active]:bg-tawakal-blue data-[state=active]:text-white'>
                   Document
                 </TabsTrigger>
               </TabsList>
@@ -904,20 +1073,20 @@ export function CreatePollForm({
           </div>
         </div>
 
-        <div className='flex justify-end gap-3 p-4 border-t border-border mt-6'>
+        <div className='flex justify-end gap-3 p-4 border-t mt-6'>
           <Button
             type='button'
             variant='outline'
             onClick={() => {
               window.history.back();
             }}
-            className='border border-tawakal-red/50 text-tawakal-red hover:bg-tawakal-red/10'>
+            className='border border-gray-300 text-gray-700 hover:bg-gray-50'>
             Cancel
           </Button>
           <Button
             type='submit'
             disabled={isSubmitting}
-            className='bg-tawakal-blue hover:bg-tawakal-blue/90 text-white font-medium min-w-[120px] border-0'>
+            className='bg-tawakal-blue hover:bg-tawakal-blue/90 text-white font-medium min-w-[120px]'>
             {isSubmitting ? "Creating..." : "Create Poll"}
           </Button>
         </div>

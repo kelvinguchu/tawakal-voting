@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { createClient } from "@/lib/supabase/client";
+import { createUser } from "@/app/actions/admin/create-user";
 import {
   Dialog,
   DialogContent,
@@ -33,7 +33,6 @@ export function AddAccountDialog({
   open,
   onOpenChange,
 }: AddAccountDialogProps) {
-  const supabase = createClient();
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
   const [formData, setFormData] = useState({
@@ -77,46 +76,17 @@ export function AddAccountDialog({
     setLoading(true);
 
     try {
-      const { email, password, first_name, last_name, role } = formData;
-
-      // Validate form data
-      if (!email || !password || !first_name || !last_name) {
-        toast.error("Please fill in all required fields");
-        setLoading(false);
-        return;
-      }
-
-      // Create the user with Supabase Auth
-      const { data: authData, error: authError } = await supabase.auth.signUp({
-        email,
-        password,
-        options: {
-          data: {
-            first_name,
-            last_name,
-            role,
-          },
-        },
+      // Create a FormData object to pass to the server action
+      const formDataObject = new FormData();
+      Object.entries(formData).forEach(([key, value]) => {
+        formDataObject.append(key, value);
       });
 
-      if (authError) {
-        throw authError;
-      }
+      // Call the server action
+      const result = await createUser(formDataObject);
 
-      // If successful, store additional user data in the database
-      if (authData.user) {
-        const { error: profileError } = await supabase.from("users").insert({
-          id: authData.user.id,
-          email,
-          first_name,
-          last_name,
-          role,
-          is_active: true,
-        });
-
-        if (profileError) {
-          throw profileError;
-        }
+      if (result.error) {
+        throw new Error(result.error);
       }
 
       toast.success("Account created successfully");

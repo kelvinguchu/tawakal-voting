@@ -6,13 +6,198 @@ import { DashboardMetrics } from "@/components/dashboard/dashboard-metrics";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
-import Link from "next/link";
 import { Calendar, Clock, TimerOff } from "lucide-react";
+import { Suspense } from "react";
+import {
+  PollsLoading,
+  EmptyPollsState,
+} from "@/components/dashboard/poll-loading";
+import {
+  Drawer,
+  DrawerContent,
+  DrawerHeader,
+  DrawerTitle,
+  DrawerTrigger,
+  DrawerDescription,
+} from "@/components/ui/drawer";
+import { PollDetail } from "@/components/polls/poll-detail";
 
 export const metadata: Metadata = {
   title: "Dashboard - Tawakal Voting System",
   description: "Dashboard for Tawakal's internal voting system",
 };
+
+// Poll list component with data fetching - now with preloaded status updates
+async function PollsList({
+  type,
+  userId,
+}: {
+  type: "active" | "scheduled" | "closed";
+  userId: string;
+}) {
+  const supabase = await createClient();
+
+  let pollsData;
+
+  try {
+    // Status updates should have been done in the parent component already
+
+    if (type === "active") {
+      const { data } = await supabase
+        .from("polls")
+        .select("*, poll_options(*)")
+        .eq("status", "active")
+        .order("created_at", { ascending: false })
+        .limit(10);
+
+      pollsData = data;
+    } else if (type === "scheduled") {
+      const { data } = await supabase
+        .from("polls")
+        .select("*")
+        .eq("status", "scheduled")
+        .order("start_time", { ascending: true })
+        .limit(10);
+
+      pollsData = data;
+    } else {
+      const { data } = await supabase
+        .from("polls")
+        .select("*")
+        .eq("status", "closed")
+        .order("end_time", { ascending: false })
+        .limit(10);
+
+      pollsData = data;
+    }
+  } catch (error) {
+    console.error(`Error fetching ${type} polls:`, error);
+    pollsData = [];
+  }
+
+  // Format date helper function
+  const formatDate = (dateString: string | null, includeTime = false) => {
+    if (!dateString) return "N/A";
+    return new Date(dateString).toLocaleDateString("en-US", {
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+      ...(includeTime && { hour: "2-digit", minute: "2-digit" }),
+    });
+  };
+
+  if (!pollsData || pollsData.length === 0) {
+    return <EmptyPollsState type={type} />;
+  }
+
+  const getCardStyle = () => {
+    switch (type) {
+      case "active":
+        return {
+          titleColor: "text-tawakal-blue",
+          iconColor: "text-tawakal-blue",
+          buttonClass: "bg-tawakal-blue hover:bg-tawakal-blue/90",
+          icon: <Clock className='h-3 w-3 mr-1 inline text-tawakal-blue' />,
+          label: "Ends",
+          buttonText: "Vote Now",
+        };
+      case "scheduled":
+        return {
+          titleColor: "text-tawakal-green",
+          iconColor: "text-tawakal-green",
+          buttonClass: "",
+          icon: <Calendar className='h-3 w-3 mr-1 inline text-tawakal-green' />,
+          label: "Starts",
+          buttonText: "",
+        };
+      case "closed":
+        return {
+          titleColor: "text-tawakal-gold",
+          iconColor: "text-tawakal-gold",
+          buttonClass:
+            "border-tawakal-gold text-tawakal-gold hover:bg-tawakal-gold/10",
+          icon: <TimerOff className='h-3 w-3 mr-1 inline text-tawakal-gold' />,
+          label: "Closed",
+          buttonText: "View Results",
+        };
+    }
+  };
+
+  const style = getCardStyle();
+
+  return (
+    <div className='grid gap-4 grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4'>
+      {pollsData.map((poll) => (
+        <Card
+          key={poll.id}
+          className='h-full flex flex-col hover:shadow-sm transition-shadow'>
+          <CardHeader className='pb-2 border-b'>
+            <CardTitle
+              className={`text-base font-medium ${style.titleColor} line-clamp-1`}>
+              {poll.title}
+            </CardTitle>
+            <p className='text-xs text-muted-foreground flex items-center'>
+              {style.icon}
+              {style.label}:{" "}
+              {formatDate(
+                type === "scheduled" ? poll.start_time : poll.end_time,
+                true
+              )}
+            </p>
+          </CardHeader>
+          <CardContent className='pt-4 pb-3 flex-grow flex flex-col'>
+            <p className='text-sm text-muted-foreground mb-3 line-clamp-2 flex-grow'>
+              {poll.description || "No description provided."}
+            </p>
+            {type === "scheduled" ? (
+              <div className='py-1 px-3 text-xs rounded-full bg-tawakal-green/10 text-tawakal-green border border-tawakal-green/20 w-fit'>
+                Scheduled
+              </div>
+            ) : (
+              // Use drawer for both active and closed polls
+              <Drawer>
+                <DrawerTrigger asChild>
+                  <Button
+                    variant={type === "closed" ? "outline" : "default"}
+                    className={`w-full mt-auto ${style.buttonClass}`}>
+                    {style.buttonText}
+                  </Button>
+                </DrawerTrigger>
+                <DrawerContent className='min-h-[95vh]'>
+                  <DrawerHeader className='sr-only'>
+                    <DrawerTitle>{poll.title}</DrawerTitle>
+                    <DrawerDescription>
+                      {type === "active"
+                        ? "Vote on this poll"
+                        : "View closed poll results"}
+                    </DrawerDescription>
+                  </DrawerHeader>
+                  <div className='p-6'>
+                    <PollDetail pollId={poll.id} userId={userId} />
+                  </div>
+                </DrawerContent>
+              </Drawer>
+            )}
+          </CardContent>
+        </Card>
+      ))}
+    </div>
+  );
+}
+
+// Preloader component that ensures poll statuses are updated before showing any content
+async function PollStatusPreloader() {
+  const supabase = await createClient();
+
+  // Update all poll statuses
+  try {
+    await supabase.rpc("process_poll_status_updates");
+  } catch (error) {
+    console.error("Error updating poll statuses in preloader:", error);
+  }
+
+  return null; // This component doesn't render anything
+}
 
 export default async function DashboardPage() {
   const supabase = await createClient();
@@ -27,6 +212,9 @@ export default async function DashboardPage() {
     redirect("/login");
   }
 
+  // First, update all poll statuses to ensure accurate counts and categorization
+  await supabase.rpc("process_poll_status_updates");
+
   // Fetch user data
   const { data: userData } = await supabase
     .from("users")
@@ -34,31 +222,7 @@ export default async function DashboardPage() {
     .eq("id", user.id)
     .single();
 
-  // Fetch active polls
-  const { data: activePolls } = await supabase
-    .from("polls")
-    .select("*, poll_options(*)")
-    .eq("status", "active")
-    .order("created_at", { ascending: false })
-    .limit(10);
-
-  // Fetch upcoming polls
-  const { data: upcomingPolls } = await supabase
-    .from("polls")
-    .select("*")
-    .eq("status", "scheduled")
-    .order("start_time", { ascending: true })
-    .limit(10);
-
-  // Fetch recently closed polls
-  const { data: recentlyClosedPolls } = await supabase
-    .from("polls")
-    .select("*")
-    .eq("status", "closed")
-    .order("end_time", { ascending: false })
-    .limit(10);
-
-  // Fetch user's vote count
+  // Fetch basic metrics without waiting for all poll data
   const voteCountResult = await supabase
     .from("votes")
     .select("*", { count: "exact", head: true })
@@ -66,27 +230,32 @@ export default async function DashboardPage() {
 
   const voteCount: number = voteCountResult.count || 0;
 
-  // Format date helper function
-  const formatDate = (dateString: string | null, includeTime = false) => {
-    if (!dateString) return "N/A";
-    return new Date(dateString).toLocaleDateString("en-US", {
-      month: "short",
-      day: "numeric",
-      year: "numeric",
-      ...(includeTime && { hour: "2-digit", minute: "2-digit" }),
-    });
-  };
+  // Get just the counts for metrics
+  const { count: activePollsCount } = await supabase
+    .from("polls")
+    .select("*", { count: "exact", head: true })
+    .eq("status", "active");
+
+  const { count: upcomingPollsCount } = await supabase
+    .from("polls")
+    .select("*", { count: "exact", head: true })
+    .eq("status", "scheduled");
 
   return (
     <div className='w-full max-w-full'>
+      {/* Ensure poll statuses are updated before anything renders */}
+      <Suspense fallback={null}>
+        <PollStatusPreloader />
+      </Suspense>
+
       {/* Dashboard Header */}
       <DashboardHeader userData={userData} />
 
       {/* Metrics Row */}
       <DashboardMetrics
         voteCount={voteCount}
-        activePollsCount={activePolls?.length || 0}
-        upcomingPollsCount={upcomingPolls?.length || 0}
+        activePollsCount={activePollsCount || 0}
+        upcomingPollsCount={upcomingPollsCount || 0}
         isAdmin={userData?.role === "admin"}
       />
 
@@ -122,118 +291,23 @@ export default async function DashboardPage() {
 
           {/* Active Polls Content */}
           <TabsContent value='active' className='mt-0 w-full'>
-            {activePolls && activePolls.length > 0 ? (
-              <div className='grid gap-4 grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4'>
-                {activePolls.map((poll) => (
-                  <Card
-                    key={poll.id}
-                    className='h-full flex flex-col hover:shadow-sm transition-shadow'>
-                    <CardHeader className='pb-2 border-b'>
-                      <CardTitle className='text-base font-medium text-tawakal-blue line-clamp-1'>
-                        {poll.title}
-                      </CardTitle>
-                      <p className='text-xs text-muted-foreground flex items-center'>
-                        <Clock className='h-3 w-3 mr-1 inline text-tawakal-blue' />
-                        Ends: {formatDate(poll.end_time, true)}
-                      </p>
-                    </CardHeader>
-                    <CardContent className='pt-4 pb-3 flex-grow flex flex-col'>
-                      <p className='text-sm text-muted-foreground mb-3 line-clamp-2 flex-grow'>
-                        {poll.description || "No description provided."}
-                      </p>
-                      <Button
-                        asChild
-                        className='w-full mt-auto bg-tawakal-blue hover:bg-tawakal-blue/90'>
-                        <Link href={`/polls/${poll.id}`}>Vote Now</Link>
-                      </Button>
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
-            ) : (
-              <div className='text-center py-8 border rounded-lg'>
-                <p className='text-muted-foreground'>
-                  No active polls available at this time.
-                </p>
-              </div>
-            )}
+            <Suspense fallback={<PollsLoading />}>
+              <PollsList type='active' userId={user.id} />
+            </Suspense>
           </TabsContent>
 
           {/* Upcoming Polls Content */}
           <TabsContent value='upcoming' className='mt-0 w-full'>
-            {upcomingPolls && upcomingPolls.length > 0 ? (
-              <div className='grid gap-4 grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4'>
-                {upcomingPolls.map((poll) => (
-                  <Card
-                    key={poll.id}
-                    className='h-full flex flex-col hover:shadow-sm transition-shadow'>
-                    <CardHeader className='pb-2 border-b'>
-                      <CardTitle className='text-base font-medium text-tawakal-green line-clamp-1'>
-                        {poll.title}
-                      </CardTitle>
-                      <p className='text-xs text-muted-foreground flex items-center'>
-                        <Calendar className='h-3 w-3 mr-1 inline text-tawakal-green' />
-                        Starts: {formatDate(poll.start_time, true)}
-                      </p>
-                    </CardHeader>
-                    <CardContent className='pt-4 pb-3 flex-grow flex flex-col'>
-                      <p className='text-sm text-muted-foreground mb-3 line-clamp-2 flex-grow'>
-                        {poll.description || "No description provided."}
-                      </p>
-                      <div className='py-1 px-3 text-xs rounded-full bg-tawakal-green/10 text-tawakal-green border border-tawakal-green/20 w-fit'>
-                        Scheduled
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
-            ) : (
-              <div className='text-center py-8 border rounded-lg'>
-                <p className='text-muted-foreground'>
-                  No upcoming polls available at this time.
-                </p>
-              </div>
-            )}
+            <Suspense fallback={<PollsLoading />}>
+              <PollsList type='scheduled' userId={user.id} />
+            </Suspense>
           </TabsContent>
 
           {/* Closed Polls Content */}
           <TabsContent value='closed' className='mt-0 w-full'>
-            {recentlyClosedPolls && recentlyClosedPolls.length > 0 ? (
-              <div className='grid gap-4 grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4'>
-                {recentlyClosedPolls.map((poll) => (
-                  <Card
-                    key={poll.id}
-                    className='h-full flex flex-col hover:shadow-sm transition-shadow'>
-                    <CardHeader className='pb-2 border-b'>
-                      <CardTitle className='text-base font-medium text-tawakal-gold line-clamp-1'>
-                        {poll.title}
-                      </CardTitle>
-                      <p className='text-xs text-muted-foreground flex items-center'>
-                        <TimerOff className='h-3 w-3 mr-1 inline text-tawakal-gold' />
-                        Closed: {formatDate(poll.end_time)}
-                      </p>
-                    </CardHeader>
-                    <CardContent className='pt-4 pb-3 flex-grow flex flex-col'>
-                      <p className='text-sm text-muted-foreground mb-3 line-clamp-2 flex-grow'>
-                        {poll.description || "No description provided."}
-                      </p>
-                      <Button
-                        asChild
-                        variant='outline'
-                        className='w-full mt-auto border-tawakal-gold text-tawakal-gold hover:bg-tawakal-gold/10'>
-                        <Link href={`/polls/${poll.id}`}>View Results</Link>
-                      </Button>
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
-            ) : (
-              <div className='text-center py-8 border rounded-lg'>
-                <p className='text-muted-foreground'>
-                  No closed polls available at this time.
-                </p>
-              </div>
-            )}
+            <Suspense fallback={<PollsLoading />}>
+              <PollsList type='closed' userId={user.id} />
+            </Suspense>
           </TabsContent>
         </Tabs>
       </div>

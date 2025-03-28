@@ -7,7 +7,7 @@ interface DashboardHeaderProps {
   userData: User | null;
 }
 
-export function DashboardHeader({ userData }: DashboardHeaderProps) {
+export function DashboardHeader(  { userData }: DashboardHeaderProps) {
   return (
     <motion.div
       initial={{ opacity: 0, y: -10 }}

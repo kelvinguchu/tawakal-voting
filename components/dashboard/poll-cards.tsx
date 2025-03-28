@@ -13,6 +13,8 @@ import { Poll } from "@/lib/types/database";
 import { cn } from "@/lib/utils";
 import { CalendarClock, Check, TimerOff } from "lucide-react";
 import { motion } from "framer-motion";
+import { useEffect } from "react";
+import { createClient } from "@/lib/supabase/client";
 
 // Format date helper function
 const formatDate = (dateString: string | null) => {
@@ -43,8 +45,31 @@ const listItemVariants = {
   }),
 };
 
+// Function to check and update poll statuses
+const updatePollStatuses = async () => {
+  const supabase = createClient();
+
+  // Update active polls that have ended
+  await supabase
+    .from("polls")
+    .update({ status: "closed" })
+    .eq("status", "active")
+    .lt("end_time", new Date().toISOString());
+
+  // Update scheduled polls that should be active
+  await supabase
+    .from("polls")
+    .update({ status: "active" })
+    .eq("status", "scheduled")
+    .lte("start_time", new Date().toISOString());
+};
+
 // Active Polls Card
 export function ActivePollsCard({ polls }: { polls: Poll[] }) {
+  useEffect(() => {
+    updatePollStatuses();
+  }, []);
+
   return (
     <motion.div initial='hidden' animate='visible' variants={cardVariants}>
       <Card className='overflow-hidden bg-white/70 dark:bg-black/40 backdrop-blur-sm border border-white/20 shadow-lg hover:shadow-emerald-500/10 transition-all duration-300'>
