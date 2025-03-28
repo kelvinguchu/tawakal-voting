@@ -4,16 +4,15 @@ import { PollDetail } from "@/components/polls/poll-detail";
 import { Metadata } from "next";
 import { Suspense } from "react";
 
-// Define the correct page params type for Next.js
-type PageProps = {
-  params: { id: string };
-  searchParams: { [key: string]: string | string[] | undefined };
-};
+// Define the correct page params type for Next.js 15+
+type Params = Promise<{ id: string }>;
 
 // Metadata generator
 export async function generateMetadata({
   params,
-}: PageProps): Promise<Metadata> {
+}: {
+  params: { id: string };
+}): Promise<Metadata> {
   const supabase = await createClient();
   const pollId = params.id;
 
@@ -51,9 +50,11 @@ async function PollStatusPreloader() {
   return null;
 }
 
-export default async function PollPage({ params }: PageProps) {
+export default async function PollPage({ params }: { params: Params }) {
   const supabase = await createClient();
-  const pollId = params.id; // Store in a local variable to avoid the error
+
+  // In Next.js 15+, params is a Promise that needs to be awaited
+  const { id: pollId } = await params;
 
   // Check if the user is authenticated
   const {
