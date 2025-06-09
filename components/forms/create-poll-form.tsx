@@ -22,27 +22,13 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
-import {
-  CalendarIcon,
-  Clock,
-  Link as LinkIcon,
-  Plus,
-  Trash2,
-  Upload,
-} from "lucide-react";
+import { CalendarIcon, Clock, Plus, Trash2, Upload } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import { addHours } from "date-fns";
 import { createClient } from "@/lib/supabase/client";
 import { toast } from "sonner";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+
 import { Badge } from "@/components/ui/badge";
 
 const formSchema = z.object({
@@ -75,17 +61,6 @@ const formSchema = z.object({
     .min(2, {
       message: "At least 2 options are required.",
     }),
-  media: z
-    .array(
-      z.object({
-        type: z.enum(["image", "document", "link"]),
-        url: z.string().optional(),
-        file: z.instanceof(File).optional(),
-        description: z.string().optional(),
-      })
-    )
-    .optional()
-    .default([]),
 });
 
 interface CreatePollFormProps {
@@ -100,10 +75,7 @@ export function CreatePollForm({
   userRole,
 }: CreatePollFormProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [mediaTab, setMediaTab] = useState<string>("link");
-  const [documentInputType, setDocumentInputType] = useState<"upload" | "link">(
-    "link"
-  );
+
   const [startImmediately, setStartImmediately] = useState(false);
   const router = useRouter();
   const supabase = createClient();
@@ -120,7 +92,6 @@ export function CreatePollForm({
         { text: "", image: undefined, imageDescription: "" },
         { text: "", image: undefined, imageDescription: "" },
       ],
-      media: [],
     },
   });
 
@@ -167,22 +138,6 @@ export function CreatePollForm({
     }
   };
 
-  const addMedia = (
-    type: "image" | "document" | "link",
-    data: { url?: string; file?: File; description?: string }
-  ) => {
-    const media = form.getValues("media") || [];
-    form.setValue("media", [...media, { type, ...data }]);
-  };
-
-  const removeMedia = (index: number) => {
-    const media = form.getValues("media") || [];
-    form.setValue(
-      "media",
-      media.filter((_, i) => i !== index)
-    );
-  };
-
   const calculateEndTime = (
     startDate: Date,
     startTime: string,
@@ -215,18 +170,14 @@ export function CreatePollForm({
       startTime: values.startTime,
       duration: values.duration,
       optionsCount: values.options.length,
-      mediaCount: values.media?.length || 0,
       startImmediately,
     });
     console.log("User ID:", userId);
     console.log("User role:", userRole);
 
-    // Check for file attachments (options with images and media items with files)
+    // Check for file attachments (options with images)
     const optionsWithImages = values.options.filter(
       (opt) => opt.image instanceof File
-    );
-    const mediaWithFiles = (values.media || []).filter(
-      (item) => item.file instanceof File
     );
 
     console.log("Options with images:", optionsWithImages.length);
@@ -236,18 +187,6 @@ export function CreatePollForm({
           filename: opt.image?.name,
           size: opt.image?.size,
           type: opt.image?.type,
-        });
-      });
-    }
-
-    console.log("Media items with files:", mediaWithFiles.length);
-    if (mediaWithFiles.length > 0) {
-      mediaWithFiles.forEach((item, idx) => {
-        console.log(`Media file ${idx}:`, {
-          type: item.type,
-          filename: item.file?.name,
-          size: item.file?.size,
-          fileType: item.file?.type,
         });
       });
     }
@@ -307,16 +246,6 @@ export function CreatePollForm({
           created_by: userId,
           validOptions: validOptions.map((opt) => ({ text: opt.text })), // Only send the text for now, we'll upload images separately
           status: values.status,
-          mediaItems: values.media
-            .filter(
-              (item) =>
-                item.type === "link" || (item.type === "document" && item.url)
-            ) // Only include links here
-            .map((item) => ({
-              type: item.type,
-              url: item.url,
-              description: item.description || "",
-            })),
         }),
       });
 
@@ -332,7 +261,7 @@ export function CreatePollForm({
       // Now handle file uploads for options with images
       const optionUploadPromises = [];
 
-      // First, upload option images
+      // Upload option images
       for (let i = 0; i < validOptions.length; i++) {
         const option = validOptions[i];
         if (option.image instanceof File) {
@@ -417,74 +346,8 @@ export function CreatePollForm({
         }
       }
 
-      // Now handle file uploads for poll media attachments
-      const mediaUploadPromises = [];
-      for (const mediaItem of values.media || []) {
-        if (mediaItem.file instanceof File) {
-          console.log(`Preparing to upload poll media: ${mediaItem.file.name}`);
-
-          const formData = new FormData();
-          formData.append("file", mediaItem.file);
-          formData.append("pollId", pollId);
-          formData.append("mediaType", mediaItem.type);
-          if (mediaItem.description) {
-            formData.append("description", mediaItem.description);
-          }
-
-          const uploadPromise = fetch("/api/polls/upload", {
-            method: "POST",
-            body: formData,
-          })
-            .then(async (res) => {
-              if (!res.ok) {
-                const errorData = await res.json();
-                console.error(
-                  `Failed to upload media ${mediaItem.file?.name}:`,
-                  errorData
-                );
-
-                // Show specific error message to user
-                if (errorData.message?.includes("row-level security policy")) {
-                  toast.error(
-                    `Failed to upload poll media: Database permission error. Please contact support.`
-                  );
-                } else if (errorData.message?.includes("Unauthorized")) {
-                  toast.error(
-                    `Failed to upload poll media: You don't have permission to upload files.`
-                  );
-                } else {
-                  toast.error(
-                    `Failed to upload poll media: ${
-                      errorData.message || "Unknown error"
-                    }`
-                  );
-                }
-
-                return Promise.reject(errorData);
-              }
-              return res.json();
-            })
-            .then((data) => {
-              console.log(`Successfully uploaded poll media: ${data.filePath}`);
-              toast.success(
-                `Successfully uploaded poll media: ${mediaItem.file?.name}`
-              );
-              return data;
-            })
-            .catch((err) => {
-              console.error("Poll media upload error:", err);
-              return null;
-            });
-
-          mediaUploadPromises.push(uploadPromise);
-        }
-      }
-
       // Wait for all uploads to complete
-      const uploadResults = await Promise.allSettled([
-        ...optionUploadPromises,
-        ...mediaUploadPromises,
-      ]);
+      const uploadResults = await Promise.allSettled(optionUploadPromises);
 
       // Check if any uploads failed
       const failedUploads = uploadResults.filter(
@@ -614,15 +477,17 @@ export function CreatePollForm({
             />
           </div>
 
-          <div className='grid grid-cols-1 md:grid-cols-12 gap-4 gap-y-6'>
-            <div className='md:col-span-3 order-2 md:order-3'>
+          {/* Mobile-first responsive grid */}
+          <div className='space-y-4 sm:space-y-6'>
+            {/* Start Option - Full width on mobile */}
+            <div>
               <FormItem>
-                <FormLabel className='text-gray-700 font-medium'>
+                <FormLabel className='text-gray-700 font-medium text-sm sm:text-base'>
                   Start Option
                 </FormLabel>
                 <div
                   className={cn(
-                    "flex items-center h-10 px-3 border rounded-md",
+                    "flex items-center h-10 sm:h-11 px-3 border rounded-md",
                     startImmediately
                       ? "border-green-300 bg-green-50"
                       : "border-gray-300 bg-white"
@@ -657,11 +522,11 @@ export function CreatePollForm({
                           form.setValue("status", "scheduled");
                         }
                       }}
-                      className='h-4 w-4 rounded border-gray-300 text-green-600 focus:ring-green-500'
+                      className='h-3 w-3 sm:h-4 sm:w-4 rounded border-gray-300 text-green-600 focus:ring-green-500'
                     />
                     <label
                       htmlFor='startImmediately'
-                      className='text-sm font-medium cursor-pointer ml-2 whitespace-nowrap'>
+                      className='text-xs sm:text-sm font-medium cursor-pointer ml-2 whitespace-nowrap'>
                       Start immediately
                     </label>
                   </div>
@@ -676,143 +541,146 @@ export function CreatePollForm({
               </FormItem>
             </div>
 
-            <div className='md:col-span-4 order-1 md:order-1'>
-              <FormField
-                control={form.control}
-                name='startDate'
-                render={({ field }) => (
-                  <FormItem className='flex flex-col'>
-                    <FormLabel className='text-gray-700 font-medium'>
-                      Start Date
-                    </FormLabel>
-                    <div className='relative'>
-                      <Popover>
-                        <PopoverTrigger asChild>
-                          <FormControl>
-                            <Button
-                              variant='outline'
-                              className={cn(
-                                "w-full pl-3 text-left font-normal border border-gray-300 bg-white hover:bg-gray-50",
-                                startImmediately && "opacity-60 bg-gray-50",
-                                !field.value && "text-muted-foreground"
-                              )}
-                              disabled={startImmediately}>
-                              {field.value ? (
-                                format(field.value, "PPP")
-                              ) : (
-                                <span>Pick a date</span>
-                              )}
-                              <CalendarIcon className='ml-auto h-4 w-4 opacity-70' />
-                            </Button>
-                          </FormControl>
-                        </PopoverTrigger>
-                        <PopoverContent className='w-auto p-0' align='start'>
-                          <Calendar
-                            mode='single'
-                            selected={field.value}
-                            onSelect={field.onChange}
-                            disabled={(date) =>
-                              date < new Date() || startImmediately
-                            }
-                            initialFocus
-                          />
-                        </PopoverContent>
-                      </Popover>
-                    </div>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </div>
-
-            <div className='md:col-span-3 order-3 md:order-2'>
-              <FormField
-                control={form.control}
-                name='startTime'
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel className='text-gray-700 font-medium'>
-                      Start Time
-                    </FormLabel>
-                    <FormControl>
+            {/* Date, Time, Duration - Responsive grid */}
+            <div className='grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4'>
+              <div className='sm:col-span-2'>
+                <FormField
+                  control={form.control}
+                  name='startDate'
+                  render={({ field }) => (
+                    <FormItem className='flex flex-col'>
+                      <FormLabel className='text-gray-700 font-medium text-sm sm:text-base'>
+                        Start Date
+                      </FormLabel>
                       <div className='relative'>
-                        <Input
-                          type='time'
-                          {...field}
-                          disabled={startImmediately}
-                          className={cn(
-                            "pl-9 border-gray-300 focus-visible:ring-tawakal-blue focus-visible:border-tawakal-blue",
-                            startImmediately && "opacity-60 bg-gray-50"
-                          )}
-                        />
-                        <Clock className='absolute left-3 top-2.5 h-4 w-4 text-gray-500' />
+                        <Popover>
+                          <PopoverTrigger asChild>
+                            <FormControl>
+                              <Button
+                                variant='outline'
+                                className={cn(
+                                  "w-full pl-3 text-left font-normal border border-gray-300 bg-white hover:bg-gray-50 h-10 sm:h-11 text-xs sm:text-sm",
+                                  startImmediately && "opacity-60 bg-gray-50",
+                                  !field.value && "text-muted-foreground"
+                                )}
+                                disabled={startImmediately}>
+                                {field.value ? (
+                                  format(field.value, "PPP")
+                                ) : (
+                                  <span>Pick a date</span>
+                                )}
+                                <CalendarIcon className='ml-auto h-3 w-3 sm:h-4 sm:w-4 opacity-70' />
+                              </Button>
+                            </FormControl>
+                          </PopoverTrigger>
+                          <PopoverContent className='w-auto p-0' align='start'>
+                            <Calendar
+                              mode='single'
+                              selected={field.value}
+                              onSelect={field.onChange}
+                              disabled={(date) =>
+                                date < new Date() || startImmediately
+                              }
+                              initialFocus
+                            />
+                          </PopoverContent>
+                        </Popover>
                       </div>
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </div>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
 
-            <div className='md:col-span-2 order-4 md:order-4'>
-              <FormField
-                control={form.control}
-                name='duration'
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel className='text-gray-700 font-medium'>
-                      Duration (hours)
-                    </FormLabel>
-                    <FormControl>
-                      <div className='flex items-center'>
-                        <Button
-                          type='button'
-                          variant='outline'
-                          size='icon'
-                          className='h-10 w-10 rounded-r-none border-gray-300 text-gray-700'
-                          onClick={() => {
-                            const currentValue = field.value || 1;
-                            if (currentValue > 1) {
-                              field.onChange(currentValue - 1);
-                            }
-                          }}>
-                          -
-                        </Button>
-                        <Input
-                          type='number'
-                          min={1}
-                          className='h-10 text-center rounded-none border-x-0 border-gray-300'
-                          {...field}
-                          onChange={(e) => {
-                            const value = parseInt(e.target.value);
-                            if (!isNaN(value) && value > 0) {
-                              field.onChange(value);
-                            }
-                          }}
-                        />
-                        <Button
-                          type='button'
-                          variant='outline'
-                          size='icon'
-                          className='h-10 w-10 rounded-l-none border-gray-300 text-gray-700'
-                          onClick={() => {
-                            const currentValue = field.value || 0;
-                            field.onChange(currentValue + 1);
-                          }}>
-                          +
-                        </Button>
-                      </div>
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+              <div>
+                <FormField
+                  control={form.control}
+                  name='startTime'
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className='text-gray-700 font-medium text-sm sm:text-base'>
+                        Start Time
+                      </FormLabel>
+                      <FormControl>
+                        <div className='relative'>
+                          <Input
+                            type='time'
+                            {...field}
+                            disabled={startImmediately}
+                            className={cn(
+                              "pl-8 sm:pl-9 border-gray-300 focus-visible:ring-tawakal-blue focus-visible:border-tawakal-blue h-10 sm:h-11 text-xs sm:text-sm",
+                              startImmediately && "opacity-60 bg-gray-50"
+                            )}
+                          />
+                          <Clock className='absolute left-2 sm:left-3 top-2.5 sm:top-3 h-3 w-3 sm:h-4 sm:w-4 text-gray-500' />
+                        </div>
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+
+              <div>
+                <FormField
+                  control={form.control}
+                  name='duration'
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className='text-gray-700 font-medium text-sm sm:text-base'>
+                        Duration (hours)
+                      </FormLabel>
+                      <FormControl>
+                        <div className='flex items-center'>
+                          <Button
+                            type='button'
+                            variant='outline'
+                            size='icon'
+                            className='h-10 w-8 sm:h-11 sm:w-10 rounded-r-none border-gray-300 text-gray-700 text-xs sm:text-sm'
+                            onClick={() => {
+                              const currentValue = field.value || 1;
+                              if (currentValue > 1) {
+                                field.onChange(currentValue - 1);
+                              }
+                            }}>
+                            -
+                          </Button>
+                          <Input
+                            type='number'
+                            min={1}
+                            className='h-10 sm:h-11 text-center rounded-none border-x-0 border-gray-300 text-xs sm:text-sm'
+                            {...field}
+                            onChange={(e) => {
+                              const value = parseInt(e.target.value);
+                              if (!isNaN(value) && value > 0) {
+                                field.onChange(value);
+                              }
+                            }}
+                          />
+                          <Button
+                            type='button'
+                            variant='outline'
+                            size='icon'
+                            className='h-10 w-8 sm:h-11 sm:w-10 rounded-l-none border-gray-300 text-gray-700 text-xs sm:text-sm'
+                            onClick={() => {
+                              const currentValue = field.value || 0;
+                              field.onChange(currentValue + 1);
+                            }}>
+                            +
+                          </Button>
+                        </div>
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
             </div>
           </div>
 
           <div className='pt-4 border-t'>
-            <div className='flex justify-between items-center mb-4'>
-              <FormLabel className='text-gray-700 font-medium text-base m-0'>
+            <div className='flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 sm:gap-0 mb-4'>
+              <FormLabel className='text-gray-700 font-medium text-sm sm:text-base m-0'>
                 Poll Options
               </FormLabel>
               <Button
@@ -820,17 +688,17 @@ export function CreatePollForm({
                 variant='outline'
                 size='sm'
                 onClick={addOption}
-                className='flex items-center gap-1 border-gray-300 hover:bg-gray-50 text-gray-700'>
-                <Plus className='h-4 w-4' />
+                className='flex items-center gap-1 border-gray-300 hover:bg-gray-50 text-gray-700 w-full sm:w-auto text-xs sm:text-sm h-9 sm:h-8'>
+                <Plus className='h-3 w-3 sm:h-4 sm:w-4' />
                 <span>Add Option</span>
               </Button>
             </div>
 
-            <div className='space-y-4'>
+            <div className='space-y-3 sm:space-y-4'>
               {form.watch("options").map((option, index) => (
                 <div
                   key={index}
-                  className='space-y-3 p-4 border rounded-md bg-gray-50'>
+                  className='space-y-3 p-3 sm:p-4 border rounded-md bg-gray-50'>
                   <div className='flex gap-2'>
                     <FormField
                       control={form.control}
@@ -841,7 +709,7 @@ export function CreatePollForm({
                             <Input
                               placeholder={`Option ${index + 1}`}
                               {...field}
-                              className='border-gray-300 focus-visible:ring-tawakal-blue focus-visible:border-tawakal-blue'
+                              className='border-gray-300 focus-visible:ring-tawakal-blue focus-visible:border-tawakal-blue h-10 sm:h-11 text-xs sm:text-sm'
                             />
                           </FormControl>
                           <FormMessage />
@@ -854,351 +722,92 @@ export function CreatePollForm({
                       size='icon'
                       onClick={() => removeOption(index)}
                       disabled={form.watch("options").length <= 2}
-                      className='text-gray-500 hover:text-red-500 hover:bg-red-50'>
-                      <Trash2 className='h-4 w-4' />
+                      className='text-gray-500 hover:text-red-500 hover:bg-red-50 h-10 w-10 sm:h-11 sm:w-11'>
+                      <Trash2 className='h-3 w-3 sm:h-4 sm:w-4' />
                     </Button>
                   </div>
 
                   {/* Option image upload */}
-                  <div className='flex gap-2'>
-                    <div className='flex-1'>
-                      <div className='flex items-center mb-1'>
-                        <span className='text-xs text-gray-500 font-medium'>
-                          Image (optional)
-                        </span>
-                      </div>
-                      <div className='flex gap-2'>
-                        <Input
-                          type='file'
-                          accept='image/*'
-                          id={`option-image-${index}`}
-                          className='flex-1 text-xs border-gray-300'
-                          onChange={(e) => {
-                            const file = e.target.files?.[0];
-                            handleOptionImageChange(
-                              index,
-                              file,
-                              form.getValues(
-                                `options.${index}.imageDescription`
-                              ) || ""
-                            );
-                          }}
-                        />
-                        <Input
-                          placeholder='Image description'
-                          value={option.imageDescription || ""}
-                          onChange={(e) => {
-                            handleOptionImageChange(
-                              index,
-                              option.image,
-                              e.target.value
-                            );
-                          }}
-                          className='flex-1 text-xs border-gray-300'
-                        />
-                      </div>
-                      {option.image && (
-                        <div className='flex items-center mt-1 text-xs text-green-600'>
-                          <Upload className='h-3 w-3 mr-1' />
-                          <span className='truncate'>{option.image.name}</span>
-                          <Button
-                            type='button'
-                            variant='ghost'
-                            size='sm'
-                            className='ml-auto h-5 w-5 p-0 text-gray-400 hover:text-red-400'
-                            onClick={() =>
-                              handleOptionImageChange(index, undefined, "")
-                            }>
-                            <Trash2 className='h-3 w-3' />
-                          </Button>
-                        </div>
-                      )}
+                  <div className='space-y-2'>
+                    <div className='flex items-center'>
+                      <span className='text-xs sm:text-sm text-gray-500 font-medium'>
+                        Image (optional)
+                      </span>
                     </div>
+                    <div className='flex flex-col sm:flex-row gap-2'>
+                      <Input
+                        type='file'
+                        accept='image/*'
+                        id={`option-image-${index}`}
+                        className='flex-1 text-xs sm:text-sm border-gray-300 h-9 sm:h-10'
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          handleOptionImageChange(
+                            index,
+                            file,
+                            form.getValues(
+                              `options.${index}.imageDescription`
+                            ) || ""
+                          );
+                        }}
+                      />
+                      <Input
+                        placeholder='Image description'
+                        value={option.imageDescription || ""}
+                        onChange={(e) => {
+                          handleOptionImageChange(
+                            index,
+                            option.image,
+                            e.target.value
+                          );
+                        }}
+                        className='flex-1 text-xs sm:text-sm border-gray-300 h-9 sm:h-10'
+                      />
+                    </div>
+                    {option.image && (
+                      <div className='flex items-center mt-1 text-xs text-green-600 bg-green-50 p-2 rounded'>
+                        <Upload className='h-3 w-3 mr-1 flex-shrink-0' />
+                        <span className='truncate flex-1'>
+                          {option.image.name}
+                        </span>
+                        <Button
+                          type='button'
+                          variant='ghost'
+                          size='sm'
+                          className='ml-2 h-6 w-6 p-0 text-gray-400 hover:text-red-400'
+                          onClick={() =>
+                            handleOptionImageChange(index, undefined, "")
+                          }>
+                          <Trash2 className='h-3 w-3' />
+                        </Button>
+                      </div>
+                    )}
                   </div>
                 </div>
               ))}
             </div>
             {form.formState.errors.options?.message && (
-              <p className='text-sm font-medium text-destructive mt-2'>
+              <p className='text-xs sm:text-sm font-medium text-destructive mt-2'>
                 {form.formState.errors.options?.message}
               </p>
             )}
           </div>
-
-          {/* Media Attachments Section */}
-          <div className='border border-gray-300 rounded-md p-5 bg-gray-50 mt-8'>
-            <div className='flex justify-between items-center mb-4'>
-              <FormLabel className='text-gray-700 font-medium text-base m-0'>
-                Media Attachments (Optional)
-              </FormLabel>
-            </div>
-
-            <Tabs value={mediaTab} onValueChange={setMediaTab}>
-              <TabsList className='grid w-full grid-cols-3 mb-4 bg-white border'>
-                <TabsTrigger
-                  value='link'
-                  className='data-[state=active]:bg-tawakal-blue data-[state=active]:text-white'>
-                  Link
-                </TabsTrigger>
-                <TabsTrigger
-                  value='image'
-                  className='data-[state=active]:bg-tawakal-blue data-[state=active]:text-white'>
-                  Image
-                </TabsTrigger>
-                <TabsTrigger
-                  value='document'
-                  className='data-[state=active]:bg-tawakal-blue data-[state=active]:text-white'>
-                  Document
-                </TabsTrigger>
-              </TabsList>
-
-              <TabsContent value='link'>
-                <div className='flex gap-2 mb-4'>
-                  <Input
-                    placeholder='Enter URL'
-                    id='linkUrl'
-                    className='flex-1 border-tawakal-blue/30 focus-visible:ring-tawakal-blue/50'
-                  />
-                  <Input
-                    placeholder='Description (optional)'
-                    id='linkDescription'
-                    className='flex-1 border-tawakal-blue/30 focus-visible:ring-tawakal-blue/50'
-                  />
-                  <Button
-                    type='button'
-                    variant='outline'
-                    className='flex-shrink-0 border-tawakal-blue text-tawakal-blue hover:bg-tawakal-blue/10'
-                    onClick={() => {
-                      const urlInput = document.getElementById(
-                        "linkUrl"
-                      ) as HTMLInputElement;
-                      const descInput = document.getElementById(
-                        "linkDescription"
-                      ) as HTMLInputElement;
-                      if (urlInput.value) {
-                        addMedia("link", {
-                          url: urlInput.value,
-                          description: descInput.value,
-                        });
-                        urlInput.value = "";
-                        descInput.value = "";
-                      }
-                    }}>
-                    <Plus className='h-4 w-4 mr-1' />
-                    Add
-                  </Button>
-                </div>
-              </TabsContent>
-
-              <TabsContent value='image'>
-                <div className='flex gap-2 mb-4'>
-                  <Input
-                    type='file'
-                    accept='image/*'
-                    id='imageUpload'
-                    className='flex-1 border-tawakal-blue/30 focus-visible:ring-tawakal-blue/50'
-                  />
-                  <Input
-                    placeholder='Description (optional)'
-                    id='imageDescription'
-                    className='flex-1 border-tawakal-blue/30 focus-visible:ring-tawakal-blue/50'
-                  />
-                  <Button
-                    type='button'
-                    variant='outline'
-                    className='flex-shrink-0 border-tawakal-green text-tawakal-green hover:bg-tawakal-green/10'
-                    onClick={() => {
-                      const fileInput = document.getElementById(
-                        "imageUpload"
-                      ) as HTMLInputElement;
-                      const descInput = document.getElementById(
-                        "imageDescription"
-                      ) as HTMLInputElement;
-                      if (fileInput.files && fileInput.files[0]) {
-                        addMedia("image", {
-                          file: fileInput.files[0],
-                          description: descInput.value,
-                        });
-                        fileInput.value = "";
-                        descInput.value = "";
-                      }
-                    }}>
-                    <Upload className='h-4 w-4 mr-1' />
-                    Upload
-                  </Button>
-                </div>
-              </TabsContent>
-
-              <TabsContent value='document'>
-                <div className='bg-muted/50 p-3 rounded-md mb-3'>
-                  <h4 className='text-sm font-medium mb-2 text-tawakal-blue'>
-                    Choose an option:
-                  </h4>
-                  <div className='flex gap-3 mb-2'>
-                    <Button
-                      type='button'
-                      variant='outline'
-                      size='sm'
-                      className={cn(
-                        "flex-1 border-tawakal-gold",
-                        documentInputType === "link" &&
-                          "bg-tawakal-gold/10 text-tawakal-gold"
-                      )}
-                      onClick={() => setDocumentInputType("link")}>
-                      <LinkIcon className='h-4 w-4 mr-2' />
-                      Google Docs Link
-                    </Button>
-                    <Button
-                      type='button'
-                      variant='outline'
-                      size='sm'
-                      className={cn(
-                        "flex-1 border-tawakal-gold",
-                        documentInputType === "upload" &&
-                          "bg-tawakal-gold/10 text-tawakal-gold"
-                      )}
-                      onClick={() => setDocumentInputType("upload")}>
-                      <Upload className='h-4 w-4 mr-2' />
-                      Upload Document
-                    </Button>
-                  </div>
-                </div>
-
-                {documentInputType === "upload" ? (
-                  <div className='flex gap-2 mb-4'>
-                    <Input
-                      type='file'
-                      accept='.pdf,.docx,.xlsx,.txt'
-                      id='docUpload'
-                      className='flex-1 border-tawakal-blue/30 focus-visible:ring-tawakal-blue/50'
-                    />
-                    <Input
-                      placeholder='Description (optional)'
-                      id='docDescription'
-                      className='flex-1 border-tawakal-blue/30 focus-visible:ring-tawakal-blue/50'
-                    />
-                    <Button
-                      type='button'
-                      variant='outline'
-                      className='flex-shrink-0 border-tawakal-gold text-tawakal-gold hover:bg-tawakal-gold/10'
-                      onClick={() => {
-                        const fileInput = document.getElementById(
-                          "docUpload"
-                        ) as HTMLInputElement;
-                        const descInput = document.getElementById(
-                          "docDescription"
-                        ) as HTMLInputElement;
-                        if (fileInput.files && fileInput.files[0]) {
-                          addMedia("document", {
-                            file: fileInput.files[0],
-                            description: descInput.value,
-                          });
-                          fileInput.value = "";
-                          descInput.value = "";
-                        }
-                      }}>
-                      <Upload className='h-4 w-4 mr-1' />
-                      Upload
-                    </Button>
-                  </div>
-                ) : (
-                  <div className='flex gap-2 mb-4'>
-                    <Input
-                      placeholder='Enter Google Docs URL'
-                      id='docUrl'
-                      className='flex-1 border-tawakal-blue/30 focus-visible:ring-tawakal-blue/50'
-                    />
-                    <Input
-                      placeholder='Description (optional)'
-                      id='docLinkDescription'
-                      className='flex-1 border-tawakal-blue/30 focus-visible:ring-tawakal-blue/50'
-                    />
-                    <Button
-                      type='button'
-                      variant='outline'
-                      className='flex-shrink-0 border-tawakal-gold text-tawakal-gold hover:bg-tawakal-gold/10'
-                      onClick={() => {
-                        const urlInput = document.getElementById(
-                          "docUrl"
-                        ) as HTMLInputElement;
-                        const descInput = document.getElementById(
-                          "docLinkDescription"
-                        ) as HTMLInputElement;
-                        if (urlInput.value) {
-                          addMedia("document", {
-                            url: urlInput.value,
-                            description: descInput.value,
-                          });
-                          urlInput.value = "";
-                          descInput.value = "";
-                        }
-                      }}>
-                      <Plus className='h-4 w-4 mr-1' />
-                      Add
-                    </Button>
-                  </div>
-                )}
-              </TabsContent>
-            </Tabs>
-
-            {/* Display added media items */}
-            {form.watch("media") && form.watch("media").length > 0 && (
-              <div className='mt-4 border-t border-tawakal-blue/20 pt-4'>
-                <h4 className='text-sm font-medium mb-2 text-tawakal-blue'>
-                  Added Attachments:
-                </h4>
-                <div className='space-y-2 pr-1'>
-                  {form.watch("media").map((item, index) => (
-                    <div
-                      key={index}
-                      className='flex items-center gap-2 text-sm bg-muted p-2 rounded-md'>
-                      {item.type === "link" && (
-                        <LinkIcon className='h-4 w-4 text-tawakal-blue' />
-                      )}
-                      {item.type === "image" && (
-                        <Upload className='h-4 w-4 text-tawakal-green' />
-                      )}
-                      {item.type === "document" && (
-                        <Upload className='h-4 w-4 text-tawakal-gold' />
-                      )}
-                      <span className='flex-1 truncate'>
-                        {item.type === "link"
-                          ? item.url
-                          : item.type === "document" && item.url
-                          ? item.url
-                          : item.file?.name}
-                        {item.description && ` - ${item.description}`}
-                      </span>
-                      <Button
-                        type='button'
-                        variant='ghost'
-                        size='sm'
-                        onClick={() => removeMedia(index)}
-                        className='text-tawakal-red/70 hover:text-tawakal-red hover:bg-tawakal-red/10'>
-                        <Trash2 className='h-4 w-4' />
-                      </Button>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-          </div>
         </div>
 
-        <div className='flex justify-end gap-3 p-4 border-t mt-6'>
+        <div className='flex flex-col sm:flex-row sm:justify-end gap-3 p-4 sm:p-6 border-t mt-6'>
           <Button
             type='button'
             variant='outline'
             onClick={() => {
               window.history.back();
             }}
-            className='border border-gray-300 text-gray-700 hover:bg-gray-50'>
+            className='border border-gray-300 text-gray-700 hover:bg-gray-50 h-10 sm:h-9 text-sm sm:text-sm order-2 sm:order-1'>
             Cancel
           </Button>
           <Button
             type='submit'
             disabled={isSubmitting}
-            className='bg-tawakal-blue hover:bg-tawakal-blue/90 text-white font-medium min-w-[120px]'>
+            className='bg-tawakal-blue hover:bg-tawakal-blue/90 text-white font-medium min-w-[120px] h-10 sm:h-9 text-sm sm:text-sm order-1 sm:order-2'>
             {isSubmitting ? "Creating..." : "Create Poll"}
           </Button>
         </div>

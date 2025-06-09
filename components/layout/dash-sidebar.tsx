@@ -3,29 +3,17 @@
 import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { createClient } from "@/lib/supabase/client";
 import { User } from "@/lib/types/database";
 import { cn } from "@/lib/utils";
-import {
-  BarChart3,
-  Home,
-  ListChecks,
-  Users,
-  LogOut,
-  ChevronRight,
-  Plus,
-  UserPlus,
-} from "lucide-react";
+import { Home, Users, Plus, UserPlus } from "lucide-react";
 import {
   Sidebar,
-  SidebarHeader,
   SidebarContent,
   SidebarGroup,
   SidebarGroupLabel,
   SidebarMenu,
   SidebarMenuItem,
   SidebarMenuButton,
-  SidebarFooter,
   SidebarSeparator,
 } from "@/components/ui/sidebar";
 import { Button } from "@/components/ui/button";
@@ -43,9 +31,8 @@ export function DashSidebar({
   signOut,
   isMobileMenuOpen,
   setIsMobileMenuOpen,
-}: DashSidebarProps) {
+}: Readonly<DashSidebarProps>) {
   const pathname = usePathname();
-  const supabase = createClient();
   const [isAddAccountDialogOpen, setIsAddAccountDialogOpen] = useState(false);
 
   // Navigation items with predefined color classes
@@ -54,17 +41,9 @@ export function DashSidebar({
       name: "Dashboard",
       href: "/dashboard",
       icon: <Home className='h-5 w-5' />,
-      activePattern: /^\/dashboard$/,
+      activePattern: /^\/dashboard/,
       color: "text-tawakal-green",
       bgActiveClass: "bg-tawakal-green/10 dark:bg-tawakal-green/20",
-    },
-    {
-      name: "Polls",
-      href: "/polls",
-      icon: <ListChecks className='h-5 w-5' />,
-      activePattern: /^\/polls/,
-      color: "text-tawakal-blue",
-      bgActiveClass: "bg-tawakal-blue/10 dark:bg-tawakal-blue/20",
     },
   ];
 

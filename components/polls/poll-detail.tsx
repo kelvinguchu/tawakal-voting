@@ -14,7 +14,6 @@ import {
   ZoomIn,
 } from "lucide-react";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
-import Link from "next/link";
 import { toast } from "sonner";
 import { Poll, PollOption } from "@/lib/types/database";
 import { cn } from "@/lib/utils";
@@ -60,7 +59,7 @@ function ImageLightbox({
 }>) {
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className='max-w-4xl w-full p-0 bg-black/90 border-none'>
+      <DialogContent className='max-w-4xl w-full p-0 bg-white border-none'>
         <DialogTitle className='sr-only'>View image: {altText}</DialogTitle>
         <div className='relative w-full h-[80vh] flex items-center justify-center'>
           <div className='relative w-full h-full'>
@@ -247,7 +246,7 @@ export function PollDetail({ pollId, userId }: Readonly<PollDetailProps>) {
         return;
       }
 
-      setUserVote(result.optionId || selectedOption);
+      setUserVote(result.optionId ?? selectedOption);
       setCheckedVoteStatus(true);
       toast.success(result.message);
 
@@ -359,7 +358,7 @@ export function PollDetail({ pollId, userId }: Readonly<PollDetailProps>) {
   }
 
   return (
-    <div className='w-full space-y-6'>
+    <div className='w-full space-y-4 sm:space-y-6'>
       {/* Image Lightbox */}
       {lightboxImage && (
         <ImageLightbox
@@ -371,21 +370,21 @@ export function PollDetail({ pollId, userId }: Readonly<PollDetailProps>) {
       )}
 
       {/* Poll Header */}
-      <div className='space-y-4'>
-        <div className='flex items-center justify-between'>
+      <div className='space-y-3 sm:space-y-4'>
+        <div className='flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4'>
           <div className='flex-1'>
-            <h1 className='text-3xl font-bold text-tawakal-blue mb-2'>
+            <h1 className='text-xl sm:text-2xl lg:text-3xl font-bold text-tawakal-blue mb-2 sm:mb-3 leading-tight'>
               {poll.title}
             </h1>
             <div className='flex items-center'>
               <div
                 className={cn(
-                  "flex items-center px-3 py-1 rounded-full text-sm font-medium",
+                  "flex items-center px-2 sm:px-3 py-1 rounded-full text-xs sm:text-sm font-medium",
                   statusInfo?.bgColor,
                   statusInfo?.color
                 )}>
                 {statusInfo?.icon}
-                <span className='ml-2'>{statusInfo?.text}</span>
+                <span className='ml-1 sm:ml-2'>{statusInfo?.text}</span>
               </div>
             </div>
           </div>
@@ -397,15 +396,22 @@ export function PollDetail({ pollId, userId }: Readonly<PollDetailProps>) {
               fetchPollDetails().then(() => setLoading(false));
             }}
             disabled={loading}
-            title='Refresh poll data'>
-            <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
-            Refresh
+            title='Refresh poll data'
+            className='w-full sm:w-auto h-9 text-sm'>
+            <RefreshCw
+              className={`h-3 w-3 sm:h-4 sm:w-4 ${
+                loading ? "animate-spin" : ""
+              }`}
+            />
+            <span className='ml-2 sm:inline'>Refresh</span>
           </Button>
         </div>
 
         {poll.description && (
-          <div className='bg-muted/30 rounded-lg p-4'>
-            <p className='text-muted-foreground'>{poll.description}</p>
+          <div className='bg-muted/30 rounded-lg p-3 sm:p-4'>
+            <p className='text-sm sm:text-base text-muted-foreground'>
+              {poll.description}
+            </p>
           </div>
         )}
       </div>
@@ -418,8 +424,6 @@ export function PollDetail({ pollId, userId }: Readonly<PollDetailProps>) {
             You have already voted
           </AlertTitle>
           <AlertDescription>
-            Your vote has been recorded for this poll. You can see the current
-            results below.
             {userVote && options.find((o) => o.id === userVote) && (
               <span className='block mt-1 font-medium'>
                 You voted for:{" "}
@@ -462,26 +466,29 @@ export function PollDetail({ pollId, userId }: Readonly<PollDetailProps>) {
       )}
 
       {/* Options Section */}
-      <div className='space-y-4'>
-        <div className='flex items-center justify-between'>
-          <h2 className='text-xl font-semibold'>
+      <div className='space-y-3 sm:space-y-4'>
+        <div className='flex flex-col sm:flex-row sm:items-center justify-between gap-2 sm:gap-4'>
+          <h2 className='text-lg sm:text-xl font-semibold'>
             {showResults ? "Results" : "Vote Options"}
           </h2>
           {showResults && totalVotes > 0 && (
-            <p className='text-sm text-muted-foreground'>
+            <p className='text-xs sm:text-sm text-muted-foreground'>
               Total votes: {totalVotes}
             </p>
           )}
         </div>
         {/* Hint about image viewing */}
         {options.some((option) => optionImages[option.id]) && (
-          <p className='text-sm text-muted-foreground flex items-center gap-1'>
+          <p className='text-xs sm:text-sm text-muted-foreground flex items-center gap-1'>
             <ZoomIn className='h-3 w-3' />
-            Click on images to view them in full size
+            <span className='hidden sm:inline'>
+              Click on images to view them in full size
+            </span>
+            <span className='sm:hidden'>Tap images to enlarge</span>
           </p>
         )}
 
-        <div className='grid gap-4 max-w-4xl'>
+        <div className='grid gap-3 sm:gap-4 max-w-4xl'>
           {options.map((option) => {
             const voteCount = results[option.id] || 0;
             const votePercentage =
@@ -491,7 +498,7 @@ export function PollDetail({ pollId, userId }: Readonly<PollDetailProps>) {
               <div
                 key={option.id}
                 className={cn(
-                  "border rounded-lg p-6 relative transition-all hover:shadow-sm",
+                  "border rounded-lg p-4 sm:p-6 relative transition-all hover:shadow-sm",
                   !hasVoted && !showResults
                     ? "cursor-pointer hover:border-tawakal-green/50 hover:bg-tawakal-green/5"
                     : "cursor-default",
@@ -506,11 +513,11 @@ export function PollDetail({ pollId, userId }: Readonly<PollDetailProps>) {
                     setSelectedOption(option.id);
                   }
                 }}>
-                <div className='flex gap-6 items-center'>
+                <div className='flex flex-col sm:flex-row gap-3 sm:gap-6 items-start sm:items-center'>
                   {optionImages[option.id] && (
-                    <div className='relative flex-shrink-0'>
+                    <div className='relative flex-shrink-0 self-center sm:self-start'>
                       <div
-                        className='w-20 h-20 rounded-lg overflow-hidden relative cursor-pointer group'
+                        className='w-16 h-16 sm:w-20 sm:h-20 rounded-lg overflow-hidden relative cursor-pointer group'
                         onClick={(e) => {
                           e.stopPropagation();
                           handleImageClick(
@@ -525,22 +532,22 @@ export function PollDetail({ pollId, userId }: Readonly<PollDetailProps>) {
                           className='object-cover transition-transform group-hover:scale-105'
                         />
                         <div className='absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors flex items-center justify-center'>
-                          <ZoomIn className='h-5 w-5 text-white opacity-0 group-hover:opacity-100 transition-opacity' />
+                          <ZoomIn className='h-4 w-4 sm:h-5 sm:w-5 text-white opacity-0 group-hover:opacity-100 transition-opacity' />
                         </div>
                       </div>
                     </div>
                   )}
-                  <div className='flex-grow space-y-2'>
-                    <div className='flex items-center justify-between'>
-                      <div className='font-semibold text-lg'>
+                  <div className='flex-grow space-y-2 w-full'>
+                    <div className='flex flex-col sm:flex-row sm:items-center justify-between gap-2'>
+                      <div className='font-semibold text-base sm:text-lg'>
                         {option.option_text}
                       </div>
                       {showResults && (
-                        <div className='text-right'>
-                          <div className='text-lg font-bold'>
+                        <div className='text-left sm:text-right'>
+                          <div className='text-lg sm:text-xl font-bold'>
                             {votePercentage}%
                           </div>
-                          <div className='text-sm text-muted-foreground'>
+                          <div className='text-xs sm:text-sm text-muted-foreground'>
                             {voteCount} votes
                           </div>
                         </div>
@@ -576,32 +583,41 @@ export function PollDetail({ pollId, userId }: Readonly<PollDetailProps>) {
 
       {/* Action Buttons */}
       {isPollAcceptingVotes && !hasVoted && (
-        <div className='flex justify-center pt-4'>
+        <div className='flex justify-center pt-4 sm:pt-6'>
           <Button
             onClick={handleVote}
             disabled={!selectedOption || submitting}
             size='lg'
-            className='bg-tawakal-green hover:bg-tawakal-green/90 px-8'>
+            className='w-full sm:w-auto bg-tawakal-green hover:bg-tawakal-green/90 px-6 sm:px-8 h-11 sm:h-12 text-sm sm:text-base'>
             {submitting ? (
               <>
-                <Loader2 className='mr-2 h-5 w-5 animate-spin' />
-                Submitting Vote...
+                <Loader2 className='mr-2 h-4 w-4 sm:h-5 sm:w-5 animate-spin' />
+                <span className='hidden sm:inline'>Submitting Vote...</span>
+                <span className='sm:hidden'>Submitting...</span>
               </>
             ) : (
-              "Submit Your Vote"
+              <>
+                <span className='hidden sm:inline'>Submit Your Vote</span>
+                <span className='sm:hidden'>Submit Vote</span>
+              </>
             )}
           </Button>
         </div>
       )}
 
       {isPollScheduled && (
-        <div className='flex justify-center pt-4'>
+        <div className='flex justify-center pt-4 sm:pt-6'>
           <Button
             disabled
             size='lg'
-            className='bg-tawakal-blue/20 text-tawakal-blue cursor-not-allowed px-8'>
-            <Calendar className='mr-2 h-5 w-5' />
-            Opens {formatDate(poll?.start_time, false)}
+            className='w-full sm:w-auto bg-tawakal-blue/20 text-tawakal-blue cursor-not-allowed px-6 sm:px-8 h-11 sm:h-12 text-sm sm:text-base'>
+            <Calendar className='mr-2 h-4 w-4 sm:h-5 sm:w-5' />
+            <span className='hidden sm:inline'>
+              Opens {formatDate(poll?.start_time, false)}
+            </span>
+            <span className='sm:hidden'>
+              Opens {formatDate(poll?.start_time, false)}
+            </span>
           </Button>
         </div>
       )}

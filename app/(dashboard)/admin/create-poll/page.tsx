@@ -1,12 +1,5 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
 import { CreatePollForm } from "@/components/forms/create-poll-form";
 import {
   Breadcrumb,
@@ -42,40 +35,41 @@ export default async function CreatePollPage() {
   }
 
   return (
-    <div className='container mx-auto py-8 space-y-6'>
+    <div className='container mx-auto px-4 sm:px-6 py-4 sm:py-8 space-y-4 sm:space-y-6'>
       <Breadcrumb>
         <BreadcrumbList>
           <BreadcrumbItem>
-            <BreadcrumbLink href='/dashboard'>
-              <Home className='h-4 w-4 mr-1' />
-              Dashboard
+            <BreadcrumbLink href='/dashboard' className='flex items-center'>
+              <Home className='h-3 w-3 sm:h-4 sm:w-4 mr-1' />
+              <span className='hidden sm:inline'>Dashboard</span>
+              <span className='sm:hidden'>Home</span>
             </BreadcrumbLink>
           </BreadcrumbItem>
           <BreadcrumbSeparator>
-            <ChevronRight className='h-4 w-4' />
+            <ChevronRight className='h-3 w-3 sm:h-4 sm:w-4' />
           </BreadcrumbSeparator>
           <BreadcrumbItem>
-            <BreadcrumbPage>
-              <PlusCircle className='h-4 w-4 mr-1' />
-              Create Poll
+            <BreadcrumbPage className='flex items-center'>
+              <PlusCircle className='h-3 w-3 sm:h-4 sm:w-4 mr-1' />
+              <span className='hidden sm:inline'>Create Poll</span>
+              <span className='sm:hidden'>Create</span>
             </BreadcrumbPage>
           </BreadcrumbItem>
         </BreadcrumbList>
       </Breadcrumb>
 
-      <Card className='w-full mx-auto'>
-        <CardHeader>
-          <CardTitle className='text-tawakal-blue text-2xl'>
+      <div className='space-y-4 sm:space-y-6'>
+        <div>
+          <h1 className='text-tawakal-blue text-xl sm:text-2xl font-semibold'>
             Create New Poll
-          </CardTitle>
-          <CardDescription>
+          </h1>
+          <p className='text-muted-foreground text-sm sm:text-base mt-1'>
             Create a new poll for users to vote on
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <CreatePollForm userId={userData.user.id} userRole={userRole.role} />
-        </CardContent>
-      </Card>
+          </p>
+        </div>
+
+        <CreatePollForm userId={userData.user.id} userRole={userRole.role} />
+      </div>
     </div>
   );
 }

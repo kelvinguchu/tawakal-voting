@@ -37,7 +37,10 @@ interface UsersTableProps {
   currentUserId: string;
 }
 
-export function UsersTable({ users, currentUserId }: UsersTableProps) {
+export function UsersTable({
+  users,
+  currentUserId,
+}: Readonly<UsersTableProps>) {
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
@@ -108,7 +111,7 @@ export function UsersTable({ users, currentUserId }: UsersTableProps) {
       window.location.reload();
     } catch (error: any) {
       console.error("Error updating user:", error);
-      toast.error(error.message || "Failed to update user");
+      toast.error(error.message ?? "Failed to update user");
     } finally {
       setIsLoading(false);
     }
@@ -135,7 +138,7 @@ export function UsersTable({ users, currentUserId }: UsersTableProps) {
       window.location.reload();
     } catch (error: any) {
       console.error("Error updating user:", error);
-      toast.error(error.message || "Failed to update user status");
+      toast.error(error.message ?? "Failed to update user status");
     } finally {
       setIsLoading(false);
       setIsConfirmOpen(false);
@@ -161,129 +164,224 @@ export function UsersTable({ users, currentUserId }: UsersTableProps) {
 
   return (
     <>
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead>Name</TableHead>
-            <TableHead>Email</TableHead>
-            <TableHead>Role</TableHead>
-            <TableHead>Status</TableHead>
-            <TableHead>Created</TableHead>
-            <TableHead>Actions</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {sortedUsers && sortedUsers.length > 0 ? (
-            sortedUsers.map((user) => {
-              const isCurrentUser = user.id === currentUserId;
-              return (
-                <TableRow
-                  key={user.id}
-                  className={isCurrentUser ? "bg-tawakal-blue/5" : ""}>
-                  <TableCell className='font-medium'>
-                    <div className='flex items-center gap-2'>
+      {/* Mobile Card View - Hidden on desktop */}
+      <div className='md:hidden space-y-4'>
+        {sortedUsers && sortedUsers.length > 0 ? (
+          sortedUsers.map((user) => {
+            const isCurrentUser = user.id === currentUserId;
+            return (
+              <div
+                key={user.id}
+                className={`p-4 rounded-lg border ${
+                  isCurrentUser
+                    ? "bg-tawakal-blue/5 border-tawakal-blue/20"
+                    : ""
+                }`}>
+                <div className='flex justify-between items-start mb-3'>
+                  <div>
+                    <h3 className='font-medium text-sm'>
                       {user.first_name} {user.last_name}
                       {isCurrentUser && (
                         <Badge
                           variant='outline'
-                          className='ml-2 border-tawakal-blue text-tawakal-blue bg-tawakal-blue/10'>
+                          className='ml-2 border-tawakal-blue text-tawakal-blue bg-tawakal-blue/10 text-xs'>
                           you
                         </Badge>
                       )}
-                    </div>
-                  </TableCell>
-                  <TableCell>{user.email}</TableCell>
-                  <TableCell>
+                    </h3>
+                    <p className='text-xs text-muted-foreground break-all'>
+                      {user.email}
+                    </p>
+                  </div>
+                  <div className='flex gap-1'>
                     <Badge
-                      className={
+                      className={`text-xs ${
                         user.role === "admin"
                           ? "bg-tawakal-blue hover:bg-tawakal-blue/80"
                           : "bg-tawakal-green hover:bg-tawakal-green/80"
-                      }>
+                      }`}>
                       {user.role === "admin" ? "Admin" : "Voter"}
                     </Badge>
-                  </TableCell>
-                  <TableCell>
-                    <Badge
-                      variant={user.is_active ? "outline" : "secondary"}
-                      className={
-                        user.is_active
-                          ? "border-tawakal-green text-tawakal-green"
-                          : ""
-                      }>
-                      {user.is_active ? "Active" : "Inactive"}
-                    </Badge>
-                  </TableCell>
-                  <TableCell>
+                  </div>
+                </div>
+                <div className='flex justify-between items-center mb-3'>
+                  <Badge
+                    variant={user.is_active ? "outline" : "secondary"}
+                    className={`text-xs ${
+                      user.is_active
+                        ? "border-tawakal-green text-tawakal-green"
+                        : ""
+                    }`}>
+                    {user.is_active ? "Active" : "Inactive"}
+                  </Badge>
+                  <span className='text-xs text-muted-foreground'>
                     {new Date(user.created_at).toISOString().split("T")[0]}
-                  </TableCell>
-                  <TableCell>
-                    <div className='flex space-x-2'>
-                      <Button
-                        variant='outline'
-                        size='sm'
-                        className='border-tawakal-blue text-tawakal-blue hover:bg-tawakal-blue/10'
-                        onClick={() => openEditDialog(user)}>
-                        Edit
-                      </Button>
-                      <Button
-                        variant='outline'
-                        size='sm'
-                        onClick={() => openConfirmDialog(user)}
-                        disabled={isCurrentUser} // Disable self-deactivation
+                  </span>
+                </div>
+                <div className='flex gap-2'>
+                  <Button
+                    variant='outline'
+                    size='sm'
+                    className='flex-1 border-tawakal-blue text-tawakal-blue hover:bg-tawakal-blue/10 text-xs h-8'
+                    onClick={() => openEditDialog(user)}>
+                    Edit
+                  </Button>
+                  <Button
+                    variant='outline'
+                    size='sm'
+                    onClick={() => openConfirmDialog(user)}
+                    disabled={isCurrentUser}
+                    className={`flex-1 text-xs h-8 ${
+                      user.is_active
+                        ? "border-tawakal-gold text-tawakal-gold hover:bg-tawakal-gold/10"
+                        : "border-tawakal-green text-tawakal-green hover:bg-tawakal-green/10"
+                    }`}>
+                    {isCurrentUser
+                      ? "Can't deactivate"
+                      : user.is_active
+                      ? "Deactivate"
+                      : "Activate"}
+                  </Button>
+                </div>
+              </div>
+            );
+          })
+        ) : (
+          <div className='text-center py-8 text-muted-foreground'>
+            No users found.
+          </div>
+        )}
+      </div>
+
+      {/* Desktop Table View - Hidden on mobile */}
+      <div className='hidden md:block'>
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Name</TableHead>
+              <TableHead>Email</TableHead>
+              <TableHead>Role</TableHead>
+              <TableHead>Status</TableHead>
+              <TableHead>Created</TableHead>
+              <TableHead>Actions</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {sortedUsers && sortedUsers.length > 0 ? (
+              sortedUsers.map((user) => {
+                const isCurrentUser = user.id === currentUserId;
+                return (
+                  <TableRow
+                    key={user.id}
+                    className={isCurrentUser ? "bg-tawakal-blue/5" : ""}>
+                    <TableCell className='font-medium'>
+                      <div className='flex items-center gap-2'>
+                        {user.first_name} {user.last_name}
+                        {isCurrentUser && (
+                          <Badge
+                            variant='outline'
+                            className='ml-2 border-tawakal-blue text-tawakal-blue bg-tawakal-blue/10'>
+                            you
+                          </Badge>
+                        )}
+                      </div>
+                    </TableCell>
+                    <TableCell>{user.email}</TableCell>
+                    <TableCell>
+                      <Badge
+                        className={
+                          user.role === "admin"
+                            ? "bg-tawakal-blue hover:bg-tawakal-blue/80"
+                            : "bg-tawakal-green hover:bg-tawakal-green/80"
+                        }>
+                        {user.role === "admin" ? "Admin" : "Voter"}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>
+                      <Badge
+                        variant={user.is_active ? "outline" : "secondary"}
                         className={
                           user.is_active
-                            ? "border-tawakal-gold text-tawakal-gold hover:bg-tawakal-gold/10"
-                            : "border-tawakal-green text-tawakal-green hover:bg-tawakal-green/10"
+                            ? "border-tawakal-green text-tawakal-green"
+                            : ""
                         }>
-                        {isCurrentUser
-                          ? "Cannot deactivate"
-                          : user.is_active
-                          ? "Deactivate"
-                          : "Activate"}
-                      </Button>
-                    </div>
-                  </TableCell>
-                </TableRow>
-              );
-            })
-          ) : (
-            <TableRow>
-              <TableCell
-                colSpan={6}
-                className='text-center py-8 text-muted-foreground'>
-                No users found.
-              </TableCell>
-            </TableRow>
-          )}
-        </TableBody>
-      </Table>
+                        {user.is_active ? "Active" : "Inactive"}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>
+                      {new Date(user.created_at).toISOString().split("T")[0]}
+                    </TableCell>
+                    <TableCell>
+                      <div className='flex space-x-2'>
+                        <Button
+                          variant='outline'
+                          size='sm'
+                          className='border-tawakal-blue text-tawakal-blue hover:bg-tawakal-blue/10'
+                          onClick={() => openEditDialog(user)}>
+                          Edit
+                        </Button>
+                        <Button
+                          variant='outline'
+                          size='sm'
+                          onClick={() => openConfirmDialog(user)}
+                          disabled={isCurrentUser} // Disable self-deactivation
+                          className={
+                            user.is_active
+                              ? "border-tawakal-gold text-tawakal-gold hover:bg-tawakal-gold/10"
+                              : "border-tawakal-green text-tawakal-green hover:bg-tawakal-green/10"
+                          }>
+                          {isCurrentUser
+                            ? "Cannot deactivate"
+                            : user.is_active
+                            ? "Deactivate"
+                            : "Activate"}
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                );
+              })
+            ) : (
+              <TableRow>
+                <TableCell
+                  colSpan={6}
+                  className='text-center py-8 text-muted-foreground'>
+                  No users found.
+                </TableCell>
+              </TableRow>
+            )}
+          </TableBody>
+        </Table>
+      </div>
 
       {/* Confirmation Dialog */}
       <Dialog open={isConfirmOpen} onOpenChange={setIsConfirmOpen}>
-        <DialogContent className='sm:max-w-[400px]'>
+        <DialogContent className='w-[95vw] max-w-[400px] mx-4'>
           <DialogHeader>
-            <DialogTitle className='text-tawakal-blue'>
+            <DialogTitle className='text-tawakal-blue text-lg sm:text-xl'>
               Confirm User Status Change
             </DialogTitle>
-            <DialogDescription>
+            <DialogDescription className='text-sm sm:text-base'>
               {selectedUser?.is_active
                 ? "Are you sure you want to deactivate this user? They will no longer be able to log in."
                 : "Are you sure you want to activate this user? They will be able to log in again."}
             </DialogDescription>
           </DialogHeader>
-          <DialogFooter className='mt-4'>
-            <Button variant='outline' onClick={() => setIsConfirmOpen(false)}>
+          <DialogFooter className='mt-4 flex-col sm:flex-row gap-2 sm:gap-0'>
+            <Button
+              variant='outline'
+              onClick={() => setIsConfirmOpen(false)}
+              className='w-full sm:w-auto order-2 sm:order-1'>
               Cancel
             </Button>
             <Button
               onClick={handleToggleStatus}
               disabled={isLoading}
-              className={
+              className={`w-full sm:w-auto order-1 sm:order-2 ${
                 selectedUser?.is_active
                   ? "bg-tawakal-gold hover:bg-tawakal-gold/90"
                   : "bg-tawakal-green hover:bg-tawakal-green/90"
-              }>
+              }`}>
               {isLoading
                 ? "Processing..."
                 : selectedUser?.is_active
@@ -296,17 +394,21 @@ export function UsersTable({ users, currentUserId }: UsersTableProps) {
 
       {/* Edit User Dialog */}
       <Dialog open={isEditOpen} onOpenChange={setIsEditOpen}>
-        <DialogContent className='sm:max-w-[500px]'>
+        <DialogContent className='w-[95vw] max-w-[500px] mx-4 max-h-[90vh] overflow-y-auto'>
           <DialogHeader>
-            <DialogTitle className='text-tawakal-blue'>Edit User</DialogTitle>
-            <DialogDescription>
+            <DialogTitle className='text-tawakal-blue text-lg sm:text-xl'>
+              Edit User
+            </DialogTitle>
+            <DialogDescription className='text-sm sm:text-base'>
               Update user information. Changes will be saved immediately.
             </DialogDescription>
           </DialogHeader>
           <div className='grid gap-4 py-4'>
-            <div className='grid grid-cols-2 gap-3'>
+            <div className='grid grid-cols-1 sm:grid-cols-2 gap-3'>
               <div className='grid gap-2'>
-                <Label htmlFor='first_name' className='text-tawakal-blue'>
+                <Label
+                  htmlFor='first_name'
+                  className='text-tawakal-blue text-sm'>
                   First Name
                 </Label>
                 <Input
@@ -315,10 +417,13 @@ export function UsersTable({ users, currentUserId }: UsersTableProps) {
                   value={editForm.first_name}
                   onChange={handleEditChange}
                   placeholder='Enter first name'
+                  className='h-9 sm:h-10'
                 />
               </div>
               <div className='grid gap-2'>
-                <Label htmlFor='last_name' className='text-tawakal-blue'>
+                <Label
+                  htmlFor='last_name'
+                  className='text-tawakal-blue text-sm'>
                   Last Name
                 </Label>
                 <Input
@@ -327,11 +432,12 @@ export function UsersTable({ users, currentUserId }: UsersTableProps) {
                   value={editForm.last_name}
                   onChange={handleEditChange}
                   placeholder='Enter last name'
+                  className='h-9 sm:h-10'
                 />
               </div>
             </div>
             <div className='grid gap-2'>
-              <Label htmlFor='email' className='text-tawakal-blue'>
+              <Label htmlFor='email' className='text-tawakal-blue text-sm'>
                 Email
               </Label>
               <Input
@@ -341,14 +447,15 @@ export function UsersTable({ users, currentUserId }: UsersTableProps) {
                 value={editForm.email}
                 onChange={handleEditChange}
                 placeholder='Enter email address'
+                className='h-9 sm:h-10'
               />
             </div>
             <div className='grid gap-2'>
-              <Label htmlFor='role' className='text-tawakal-blue'>
+              <Label htmlFor='role' className='text-tawakal-blue text-sm'>
                 Role
               </Label>
               <Select value={editForm.role} onValueChange={handleRoleChange}>
-                <SelectTrigger className='border-tawakal-blue/20 focus:ring-tawakal-blue/30'>
+                <SelectTrigger className='border-tawakal-blue/20 focus:ring-tawakal-blue/30 h-9 sm:h-10'>
                   <SelectValue placeholder='Select a role' />
                 </SelectTrigger>
                 <SelectContent>
@@ -358,14 +465,17 @@ export function UsersTable({ users, currentUserId }: UsersTableProps) {
               </Select>
             </div>
           </div>
-          <DialogFooter>
-            <Button variant='outline' onClick={() => setIsEditOpen(false)}>
+          <DialogFooter className='flex-col sm:flex-row gap-2 sm:gap-0'>
+            <Button
+              variant='outline'
+              onClick={() => setIsEditOpen(false)}
+              className='w-full sm:w-auto order-2 sm:order-1'>
               Cancel
             </Button>
             <Button
               onClick={handleEditSubmit}
               disabled={isLoading}
-              className='bg-tawakal-blue hover:bg-tawakal-blue/90'>
+              className='w-full sm:w-auto order-1 sm:order-2 bg-tawakal-blue hover:bg-tawakal-blue/90'>
               {isLoading ? "Saving..." : "Save Changes"}
             </Button>
           </DialogFooter>

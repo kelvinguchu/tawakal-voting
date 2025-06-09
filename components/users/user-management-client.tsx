@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import {
   Card,
   CardContent,
@@ -12,7 +12,6 @@ import { UsersTable } from "@/components/users/users-table";
 import { UserSearch } from "@/components/users/user-search";
 import { AddUserButton } from "@/components/users/add-user-button";
 import { User } from "@/lib/types/database";
-import { createClient } from "@/lib/supabase/client";
 
 interface UserManagementClientProps {
   initialUsers: User[];
@@ -22,7 +21,7 @@ interface UserManagementClientProps {
 export function UserManagementClient({
   initialUsers,
   currentUserId,
-}: UserManagementClientProps) {
+}: Readonly<UserManagementClientProps>) {
   const [filteredUsers, setFilteredUsers] = useState<User[]>(initialUsers);
 
   const handleSearch = (query: string) => {
@@ -43,29 +42,35 @@ export function UserManagementClient({
   };
 
   return (
-    <div className='w-full max-w-full'>
-      <div className='mb-8'>
-        <h1 className='text-3xl font-bold'>User Management</h1>
-        <p className='text-muted-foreground mt-1'>
+    <div className='w-full max-w-full space-y-4 sm:space-y-6'>
+      <div className='space-y-2 sm:space-y-3'>
+        <h1 className='text-2xl sm:text-3xl font-bold text-gray-900'>
+          User Management
+        </h1>
+        <p className='text-muted-foreground text-sm sm:text-base'>
           View and manage user accounts in the system
         </p>
       </div>
 
-      <div className='flex justify-between items-center mb-6'>
-        <UserSearch onSearch={handleSearch} />
-        <AddUserButton />
+      <div className='flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 sm:gap-4'>
+        <div className='flex-1 sm:max-w-md'>
+          <UserSearch onSearch={handleSearch} />
+        </div>
+        <div className='flex-shrink-0'>
+          <AddUserButton />
+        </div>
       </div>
 
-      <Card>
-        <CardHeader className='pb-4'>
-          <CardTitle>System Users</CardTitle>
-          <CardDescription>
+      <Card className='border-0 sm:border shadow-none sm:shadow-sm'>
+        <CardHeader className='px-4 sm:px-6 py-4 sm:py-6'>
+          <CardTitle className='text-lg sm:text-xl'>System Users</CardTitle>
+          <CardDescription className='text-xs sm:text-sm'>
             {filteredUsers.length === initialUsers.length
               ? `Total users: ${initialUsers.length}`
               : `Showing ${filteredUsers.length} of ${initialUsers.length} users`}
           </CardDescription>
         </CardHeader>
-        <CardContent>
+        <CardContent className='px-4 sm:px-6 pb-4 sm:pb-6'>
           <UsersTable users={filteredUsers} currentUserId={currentUserId} />
         </CardContent>
       </Card>

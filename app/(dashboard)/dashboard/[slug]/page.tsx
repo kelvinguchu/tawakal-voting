@@ -4,6 +4,9 @@ import { redirect, notFound } from "next/navigation";
 import { PollDetail } from "@/components/polls/poll-detail";
 import { titleToSlug, slugToSearchPattern } from "@/lib/utils/slug";
 
+// Force dynamic rendering since we need authentication and real-time poll data
+export const dynamic = "force-dynamic";
+
 interface VotingPageProps {
   params: Promise<{ slug: string }>;
 }
@@ -26,7 +29,7 @@ export async function generateMetadata({
     if (poll) {
       return {
         title: `${poll.title} - Tawakal Voting`,
-        description: poll.description || `Vote on: ${poll.title}`,
+        description: poll.description ?? `Vote on: ${poll.title}`,
       };
     }
   } catch (error) {
@@ -39,7 +42,9 @@ export async function generateMetadata({
   };
 }
 
-export default async function VotingPage({ params }: VotingPageProps) {
+export default async function VotingPage({
+  params,
+}: Readonly<VotingPageProps>) {
   const { slug } = await params;
   const supabase = await createClient();
 
@@ -116,20 +121,11 @@ export default async function VotingPage({ params }: VotingPageProps) {
   }
 
   return (
-    <div className='w-full'>
+    <div className='w-full px-4 sm:px-6 lg:px-8 py-4 sm:py-6'>
       <PollDetail pollId={poll.id} userId={userData.user.id} />
     </div>
   );
 }
 
-// Generate static params for popular/known polls (optional)
-// Note: generateStaticParams runs at build time, so we return an empty array
-// to allow all polls to be generated on-demand at runtime
-export async function generateStaticParams() {
-  // Return empty array to enable on-demand static generation for all poll slugs
-  // This avoids the cookies context error since generateStaticParams runs at build time
-  return [];
-}
-
-// Allow dynamic params for polls not pre-generated
-export const dynamicParams = true;
+// Remove static generation since this page needs dynamic rendering
+// Dynamic polls with authentication require runtime rendering
