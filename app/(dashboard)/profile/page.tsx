@@ -1,13 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -56,311 +48,309 @@ export default async function ProfilePage() {
   }
 
   return (
-    <div className='max-w-4xl mx-auto px-4 sm:px-6 lg:px-8'>
-      <div className='mb-4 sm:mb-6 text-center sm:text-left'>
-        <h1 className='text-2xl sm:text-3xl font-bold'>Profile Settings</h1>
+    <div className='max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-6'>
+      <div className='mb-6 sm:mb-8'>
+        <h1 className='text-3xl sm:text-4xl font-bold text-gray-900 dark:text-white mb-2'>
+          Profile Settings
+        </h1>
+        <p className='text-lg text-gray-600 dark:text-gray-300'>
+          Manage your account information and preferences
+        </p>
       </div>
 
-      <div className='grid gap-4 sm:gap-6 mb-6 sm:mb-8'>
-        <Card className='border-2 sm:border'>
-          <CardHeader className='pb-3 sm:pb-4 px-4 sm:px-6 pt-4 sm:pt-6'>
-            <div className='flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4'>
-              <div>
-                <CardTitle className='text-lg sm:text-xl'>
-                  Account Information
-                </CardTitle>
-                <CardDescription className='text-sm sm:text-base'>
-                  Your personal information and status
-                </CardDescription>
-              </div>
-              <Badge
-                variant={userData?.is_active ? "default" : "destructive"}
-                className={`text-xs sm:text-sm ${
-                  userData?.is_active
-                    ? "bg-tawakal-green text-white"
-                    : "bg-tawakal-red text-white"
-                }`}>
-                {userData?.is_active ? "Active" : "Inactive"}
-              </Badge>
-            </div>
-          </CardHeader>
-          <CardContent className='space-y-4 sm:space-y-6 px-4 sm:px-6'>
-            <div className='grid gap-3 sm:gap-4 md:grid-cols-2'>
-              <div>
-                <Label htmlFor='firstName' className='text-sm sm:text-base'>
-                  First Name
-                </Label>
-                <div className='relative mt-1'>
-                  <UserCircle className='absolute left-2 top-1/2 -translate-y-1/2 h-3 w-3 sm:h-4 sm:w-4 text-muted-foreground' />
-                  <Input
-                    id='firstName'
-                    className='pl-7 sm:pl-8 h-9 sm:h-10 text-sm sm:text-base'
-                    readOnly
-                    value={userData?.first_name || ""}
-                  />
-                </div>
-              </div>
-              <div>
-                <Label htmlFor='lastName' className='text-sm sm:text-base'>
-                  Last Name
-                </Label>
-                <div className='relative mt-1'>
-                  <UserCircle className='absolute left-2 top-1/2 -translate-y-1/2 h-3 w-3 sm:h-4 sm:w-4 text-muted-foreground' />
-                  <Input
-                    id='lastName'
-                    className='pl-7 sm:pl-8 h-9 sm:h-10 text-sm sm:text-base'
-                    readOnly
-                    value={userData?.last_name || ""}
-                  />
-                </div>
+      {/* Account Information Section */}
+      <div className='mb-8 sm:mb-10'>
+        <div className='flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6'>
+          <div>
+            <h2 className='text-2xl sm:text-3xl font-semibold text-gray-900 dark:text-white mb-2'>
+              Account Information
+            </h2>
+            <p className='text-base sm:text-lg text-gray-600 dark:text-gray-300'>
+              Your personal information and status
+            </p>
+          </div>
+          <Badge
+            variant={userData?.is_active ? "default" : "destructive"}
+            className={`text-sm sm:text-base px-4 py-2 ${
+              userData?.is_active
+                ? "bg-tawakal-green text-white"
+                : "bg-tawakal-red text-white"
+            }`}>
+            {userData?.is_active ? "Active Account" : "Inactive Account"}
+          </Badge>
+        </div>
+
+        <div className='space-y-6 sm:space-y-8'>
+          <div className='grid gap-4 sm:gap-6 md:grid-cols-2'>
+            <div>
+              <Label
+                htmlFor='firstName'
+                className='text-base sm:text-lg font-medium mb-3 block'>
+                First Name
+              </Label>
+              <div className='relative'>
+                <UserCircle className='absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400' />
+                <Input
+                  id='firstName'
+                  className='pl-10 h-12 text-base sm:text-lg bg-white/50 dark:bg-gray-800/50 backdrop-blur-sm border-2'
+                  readOnly
+                  value={userData?.first_name || ""}
+                />
               </div>
             </div>
             <div>
-              <Label htmlFor='email' className='text-sm sm:text-base'>
-                Email Address
+              <Label
+                htmlFor='lastName'
+                className='text-base sm:text-lg font-medium mb-3 block'>
+                Last Name
               </Label>
-              <div className='relative mt-1'>
-                <Mail className='absolute left-2 top-1/2 -translate-y-1/2 h-3 w-3 sm:h-4 sm:w-4 text-muted-foreground' />
+              <div className='relative'>
+                <UserCircle className='absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400' />
                 <Input
-                  id='email'
-                  className='pl-7 sm:pl-8 h-9 sm:h-10 text-sm sm:text-base'
-                  type='email'
+                  id='lastName'
+                  className='pl-10 h-12 text-base sm:text-lg bg-white/50 dark:bg-gray-800/50 backdrop-blur-sm border-2'
                   readOnly
-                  value={userData?.email || ""}
+                  value={userData?.last_name || ""}
                 />
               </div>
             </div>
-            <div className='grid gap-3 sm:gap-4 md:grid-cols-2'>
-              <div>
-                <Label htmlFor='role' className='text-sm sm:text-base'>
-                  Role
-                </Label>
-                <Input
-                  id='role'
-                  readOnly
-                  className={`h-9 sm:h-10 text-sm sm:text-base font-medium ${
-                    userData?.role === "admin"
-                      ? "text-tawakal-red"
-                      : "text-tawakal-blue"
-                  }`}
-                  value={
-                    userData?.role === "admin"
-                      ? "Administrator"
-                      : "Regular User"
-                  }
-                />
-              </div>
-              <div>
-                <Label htmlFor='joinDate' className='text-sm sm:text-base'>
-                  Joined On
-                </Label>
-                <Input
-                  id='joinDate'
-                  readOnly
-                  className='h-9 sm:h-10 text-sm sm:text-base'
-                  value={
-                    userData?.created_at
-                      ? new Date(userData.created_at).toLocaleDateString(
-                          "en-US",
-                          {
-                            year: "numeric",
-                            month: "long",
-                            day: "numeric",
-                          }
-                        )
-                      : ""
-                  }
-                />
-              </div>
+          </div>
+
+          <div>
+            <Label
+              htmlFor='email'
+              className='text-base sm:text-lg font-medium mb-3 block'>
+              Email Address
+            </Label>
+            <div className='relative'>
+              <Mail className='absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400' />
+              <Input
+                id='email'
+                className='pl-10 h-12 text-base sm:text-lg bg-white/50 dark:bg-gray-800/50 backdrop-blur-sm border-2'
+                type='email'
+                readOnly
+                value={userData?.email || ""}
+              />
             </div>
-          </CardContent>
-          <CardFooter className='px-4 sm:px-6 pb-4 sm:pb-6'>
-            <div className='w-full flex flex-col sm:flex-row justify-between sm:items-center gap-3 sm:gap-4'>
-              <div className='text-xs sm:text-sm text-muted-foreground text-center sm:text-left'>
-                <span>
-                  Votes cast:{" "}
-                  <strong className='text-tawakal-blue'>
-                    {voteCount || 0}
-                  </strong>
-                </span>
+          </div>
+
+          <div className='grid gap-4 sm:gap-6 md:grid-cols-2'>
+            <div>
+              <Label
+                htmlFor='role'
+                className='text-base sm:text-lg font-medium mb-3 block'>
+                Role
+              </Label>
+              <Input
+                id='role'
+                readOnly
+                className={`h-12 text-base sm:text-lg font-semibold bg-white/50 dark:bg-gray-800/50 backdrop-blur-sm border-2 ${
+                  userData?.role === "admin"
+                    ? "text-tawakal-red"
+                    : "text-tawakal-blue"
+                }`}
+                value={
+                  userData?.role === "admin" ? "Administrator" : "Regular User"
+                }
+              />
+            </div>
+            <div>
+              <Label
+                htmlFor='joinDate'
+                className='text-base sm:text-lg font-medium mb-3 block'>
+                Member Since
+              </Label>
+              <Input
+                id='joinDate'
+                readOnly
+                className='h-12 text-base sm:text-lg bg-white/50 dark:bg-gray-800/50 backdrop-blur-sm border-2'
+                value={
+                  userData?.created_at
+                    ? new Date(userData.created_at).toLocaleDateString(
+                        "en-US",
+                        {
+                          year: "numeric",
+                          month: "long",
+                          day: "numeric",
+                        }
+                      )
+                    : ""
+                }
+              />
+            </div>
+          </div>
+
+          <div className='flex flex-col sm:flex-row justify-between sm:items-center gap-4 pt-4 border-t border-gray-200 dark:border-gray-700'>
+            <div className='text-lg text-gray-600 dark:text-gray-300'>
+              <span>
+                Total votes cast:{" "}
+                <strong className='text-tawakal-blue text-xl'>
+                  {voteCount || 0}
+                </strong>
+              </span>
+            </div>
+            <Button className='w-full sm:w-auto bg-tawakal-blue hover:bg-tawakal-blue/90 h-12 text-lg px-8'>
+              Update Profile
+            </Button>
+          </div>
+        </div>
+      </div>
+
+      {/* Settings Tabs */}
+      <Tabs defaultValue='notifications' className='mt-8'>
+        <TabsList className='grid w-full grid-cols-2 h-12 mb-6'>
+          <TabsTrigger
+            value='notifications'
+            className='text-sm sm:text-base px-4 py-3 font-medium'>
+            <span className='hidden sm:inline'>Notification Settings</span>
+            <span className='sm:hidden'>Notifications</span>
+          </TabsTrigger>
+          <TabsTrigger
+            value='security'
+            className='text-sm sm:text-base px-4 py-3 font-medium'>
+            Security Settings
+          </TabsTrigger>
+        </TabsList>
+
+        <TabsContent value='notifications'>
+          <div className='mb-6'>
+            <h2 className='text-2xl sm:text-3xl font-semibold text-gray-900 dark:text-white mb-2'>
+              Notification Preferences
+            </h2>
+            <p className='text-base sm:text-lg text-gray-600 dark:text-gray-300'>
+              Manage how and when you receive notifications
+            </p>
+          </div>
+
+          <div className='space-y-8'>
+            <div className='flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-6 bg-white/30 dark:bg-gray-800/30 backdrop-blur-sm rounded-xl border border-gray-200 dark:border-gray-700'>
+              <div className='flex items-start gap-4 flex-1'>
+                <Bell className='h-6 w-6 mt-1 text-tawakal-blue' />
+                <div className='flex-1'>
+                  <Label className='text-lg font-semibold text-gray-900 dark:text-white block mb-2'>
+                    New Poll Notifications
+                  </Label>
+                  <p className='text-base text-gray-600 dark:text-gray-300'>
+                    Receive notifications when new polls are created
+                  </p>
+                </div>
               </div>
-              <Button className='w-full sm:w-auto bg-tawakal-blue hover:bg-tawakal-blue/90 h-9 sm:h-10 text-sm sm:text-base'>
-                Update Profile
+              <Switch
+                checked={notifPrefs?.new_poll_notification || false}
+                disabled
+                className='self-start sm:self-center'
+              />
+            </div>
+
+            <div className='flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-6 bg-white/30 dark:bg-gray-800/30 backdrop-blur-sm rounded-xl border border-gray-200 dark:border-gray-700'>
+              <div className='flex items-start gap-4 flex-1'>
+                <Bell className='h-6 w-6 mt-1 text-tawakal-green' />
+                <div className='flex-1'>
+                  <Label className='text-lg font-semibold text-gray-900 dark:text-white block mb-2'>
+                    Poll Reminders
+                  </Label>
+                  <p className='text-base text-gray-600 dark:text-gray-300'>
+                    Receive reminders for polls you haven't voted on yet
+                  </p>
+                </div>
+              </div>
+              <Switch
+                checked={notifPrefs?.reminder_notification || false}
+                disabled
+                className='self-start sm:self-center'
+              />
+            </div>
+
+            <div className='flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-6 bg-white/30 dark:bg-gray-800/30 backdrop-blur-sm rounded-xl border border-gray-200 dark:border-gray-700'>
+              <div className='flex items-start gap-4 flex-1'>
+                <Bell className='h-6 w-6 mt-1 text-tawakal-gold' />
+                <div className='flex-1'>
+                  <Label className='text-lg font-semibold text-gray-900 dark:text-white block mb-2'>
+                    Results Notifications
+                  </Label>
+                  <p className='text-base text-gray-600 dark:text-gray-300'>
+                    Receive notifications when polls you've voted on end
+                  </p>
+                </div>
+              </div>
+              <Switch
+                checked={notifPrefs?.results_notification || false}
+                disabled
+                className='self-start sm:self-center'
+              />
+            </div>
+
+            <div className='flex justify-end pt-4'>
+              <Button className='w-full sm:w-auto bg-tawakal-green hover:bg-tawakal-green/90 h-12 text-lg px-8'>
+                Save Preferences
               </Button>
             </div>
-          </CardFooter>
-        </Card>
+          </div>
+        </TabsContent>
 
-        <Tabs defaultValue='notifications'>
-          <TabsList className='grid w-full grid-cols-2 h-auto'>
-            <TabsTrigger
-              value='notifications'
-              className='text-xs sm:text-sm px-2 sm:px-4 py-2 sm:py-3'>
-              <span className='hidden sm:inline'>Notification Settings</span>
-              <span className='sm:hidden'>Notifications</span>
-            </TabsTrigger>
-            <TabsTrigger
-              value='security'
-              className='text-xs sm:text-sm px-2 sm:px-4 py-2 sm:py-3'>
-              Security
-            </TabsTrigger>
-          </TabsList>
-          <TabsContent value='notifications' className='mt-3 sm:mt-4'>
-            <Card className='border-2 sm:border'>
-              <CardHeader className='px-4 sm:px-6 pt-4 sm:pt-6'>
-                <CardTitle className='text-lg sm:text-xl'>
-                  Notification Preferences
-                </CardTitle>
-                <CardDescription className='text-sm sm:text-base'>
-                  Manage how and when you receive notifications
-                </CardDescription>
-              </CardHeader>
-              <CardContent className='space-y-4 sm:space-y-6 px-4 sm:px-6'>
-                <div className='flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4'>
-                  <div className='flex items-start gap-2 sm:gap-3 flex-1'>
-                    <Bell className='h-4 w-4 mt-0.5 text-tawakal-blue' />
-                    <div className='flex-1'>
-                      <Label
-                        htmlFor='newPollNotification'
-                        className='text-sm sm:text-base font-medium'>
-                        New Poll Notifications
-                      </Label>
-                      <p className='text-xs sm:text-sm text-muted-foreground mt-1'>
-                        Receive notifications when new polls are created
-                      </p>
-                    </div>
-                  </div>
-                  <Switch
-                    id='newPollNotification'
-                    checked={notifPrefs?.new_poll_notification || false}
-                    disabled
-                    className='self-start sm:self-center'
+        <TabsContent value='security'>
+          <div className='mb-6'>
+            <h2 className='text-2xl sm:text-3xl font-semibold text-gray-900 dark:text-white mb-2'>
+              Security Settings
+            </h2>
+            <p className='text-base sm:text-lg text-gray-600 dark:text-gray-300'>
+              Manage your account password and security preferences
+            </p>
+          </div>
+
+          <div className='space-y-6 sm:space-y-8'>
+            <div>
+              <Label className='text-base sm:text-lg font-medium mb-3 block'>
+                Current Password
+              </Label>
+              <div className='relative'>
+                <Key className='absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400' />
+                <Input
+                  className='pl-10 h-12 text-base sm:text-lg bg-white/50 dark:bg-gray-800/50 backdrop-blur-sm border-2'
+                  type='password'
+                  placeholder='••••••••'
+                />
+              </div>
+            </div>
+
+            <div className='grid gap-4 sm:gap-6 md:grid-cols-2'>
+              <div>
+                <Label className='text-base sm:text-lg font-medium mb-3 block'>
+                  New Password
+                </Label>
+                <div className='relative'>
+                  <Key className='absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400' />
+                  <Input
+                    className='pl-10 h-12 text-base sm:text-lg bg-white/50 dark:bg-gray-800/50 backdrop-blur-sm border-2'
+                    type='password'
+                    placeholder='••••••••'
                   />
                 </div>
-                <div className='flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4'>
-                  <div className='flex items-start gap-2 sm:gap-3 flex-1'>
-                    <Bell className='h-4 w-4 mt-0.5 text-tawakal-green' />
-                    <div className='flex-1'>
-                      <Label
-                        htmlFor='reminderNotification'
-                        className='text-sm sm:text-base font-medium'>
-                        Poll Reminders
-                      </Label>
-                      <p className='text-xs sm:text-sm text-muted-foreground mt-1'>
-                        Receive reminders for polls you haven't voted on yet
-                      </p>
-                    </div>
-                  </div>
-                  <Switch
-                    id='reminderNotification'
-                    checked={notifPrefs?.reminder_notification || false}
-                    disabled
-                    className='self-start sm:self-center'
+              </div>
+              <div>
+                <Label className='text-base sm:text-lg font-medium mb-3 block'>
+                  <span className='hidden sm:inline'>Confirm New Password</span>
+                  <span className='sm:hidden'>Confirm Password</span>
+                </Label>
+                <div className='relative'>
+                  <Key className='absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400' />
+                  <Input
+                    className='pl-10 h-12 text-base sm:text-lg bg-white/50 dark:bg-gray-800/50 backdrop-blur-sm border-2'
+                    type='password'
+                    placeholder='••••••••'
                   />
                 </div>
-                <div className='flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4'>
-                  <div className='flex items-start gap-2 sm:gap-3 flex-1'>
-                    <Bell className='h-4 w-4 mt-0.5 text-tawakal-gold' />
-                    <div className='flex-1'>
-                      <Label
-                        htmlFor='resultsNotification'
-                        className='text-sm sm:text-base font-medium'>
-                        Results Notifications
-                      </Label>
-                      <p className='text-xs sm:text-sm text-muted-foreground mt-1'>
-                        Receive notifications when polls you've voted on end
-                      </p>
-                    </div>
-                  </div>
-                  <Switch
-                    id='resultsNotification'
-                    checked={notifPrefs?.results_notification || false}
-                    disabled
-                    className='self-start sm:self-center'
-                  />
-                </div>
-              </CardContent>
-              <CardFooter className='px-4 sm:px-6 pb-4 sm:pb-6'>
-                <Button className='w-full sm:w-auto bg-tawakal-green hover:bg-tawakal-green/90 h-9 sm:h-10 text-sm sm:text-base'>
-                  Save Preferences
-                </Button>
-              </CardFooter>
-            </Card>
-          </TabsContent>
-          <TabsContent value='security' className='mt-3 sm:mt-4'>
-            <Card className='border-2 sm:border'>
-              <CardHeader className='px-4 sm:px-6 pt-4 sm:pt-6'>
-                <CardTitle className='text-lg sm:text-xl'>
-                  Security Settings
-                </CardTitle>
-                <CardDescription className='text-sm sm:text-base'>
-                  Manage your account password and security preferences
-                </CardDescription>
-              </CardHeader>
-              <CardContent className='space-y-4 sm:space-y-6 px-4 sm:px-6'>
-                <div>
-                  <Label
-                    htmlFor='currentPassword'
-                    className='text-sm sm:text-base'>
-                    Current Password
-                  </Label>
-                  <div className='relative mt-1'>
-                    <Key className='absolute left-2 top-1/2 -translate-y-1/2 h-3 w-3 sm:h-4 sm:w-4 text-muted-foreground' />
-                    <Input
-                      id='currentPassword'
-                      className='pl-7 sm:pl-8 h-9 sm:h-10 text-sm sm:text-base'
-                      type='password'
-                      placeholder='••••••••'
-                    />
-                  </div>
-                </div>
-                <div className='grid gap-3 sm:gap-4 md:grid-cols-2'>
-                  <div>
-                    <Label
-                      htmlFor='newPassword'
-                      className='text-sm sm:text-base'>
-                      New Password
-                    </Label>
-                    <div className='relative mt-1'>
-                      <Key className='absolute left-2 top-1/2 -translate-y-1/2 h-3 w-3 sm:h-4 sm:w-4 text-muted-foreground' />
-                      <Input
-                        id='newPassword'
-                        className='pl-7 sm:pl-8 h-9 sm:h-10 text-sm sm:text-base'
-                        type='password'
-                        placeholder='••••••••'
-                      />
-                    </div>
-                  </div>
-                  <div>
-                    <Label
-                      htmlFor='confirmPassword'
-                      className='text-sm sm:text-base'>
-                      <span className='hidden sm:inline'>
-                        Confirm New Password
-                      </span>
-                      <span className='sm:hidden'>Confirm Password</span>
-                    </Label>
-                    <div className='relative mt-1'>
-                      <Key className='absolute left-2 top-1/2 -translate-y-1/2 h-3 w-3 sm:h-4 sm:w-4 text-muted-foreground' />
-                      <Input
-                        id='confirmPassword'
-                        className='pl-7 sm:pl-8 h-9 sm:h-10 text-sm sm:text-base'
-                        type='password'
-                        placeholder='••••••••'
-                      />
-                    </div>
-                  </div>
-                </div>
-              </CardContent>
-              <CardFooter className='px-4 sm:px-6 pb-4 sm:pb-6'>
-                <Button className='w-full sm:w-auto bg-tawakal-blue hover:bg-tawakal-blue/90 h-9 sm:h-10 text-sm sm:text-base'>
-                  Change Password
-                </Button>
-              </CardFooter>
-            </Card>
-          </TabsContent>
-        </Tabs>
-      </div>
+              </div>
+            </div>
+
+            <div className='flex justify-end pt-4'>
+              <Button className='w-full sm:w-auto bg-tawakal-blue hover:bg-tawakal-blue/90 h-12 text-lg px-8'>
+                Change Password
+              </Button>
+            </div>
+          </div>
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }

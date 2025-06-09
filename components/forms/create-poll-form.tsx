@@ -544,136 +544,136 @@ export function CreatePollForm({
             {/* Date, Time, Duration - Responsive grid */}
             <div className='grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4'>
               <div className='sm:col-span-2'>
-                <FormField
-                  control={form.control}
-                  name='startDate'
-                  render={({ field }) => (
-                    <FormItem className='flex flex-col'>
+              <FormField
+                control={form.control}
+                name='startDate'
+                render={({ field }) => (
+                  <FormItem className='flex flex-col'>
                       <FormLabel className='text-gray-700 font-medium text-sm sm:text-base'>
-                        Start Date
-                      </FormLabel>
-                      <div className='relative'>
-                        <Popover>
-                          <PopoverTrigger asChild>
-                            <FormControl>
-                              <Button
-                                variant='outline'
-                                className={cn(
+                      Start Date
+                    </FormLabel>
+                    <div className='relative'>
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <FormControl>
+                            <Button
+                              variant='outline'
+                              className={cn(
                                   "w-full pl-3 text-left font-normal border border-gray-300 bg-white hover:bg-gray-50 h-10 sm:h-11 text-xs sm:text-sm",
-                                  startImmediately && "opacity-60 bg-gray-50",
-                                  !field.value && "text-muted-foreground"
-                                )}
-                                disabled={startImmediately}>
-                                {field.value ? (
-                                  format(field.value, "PPP")
-                                ) : (
-                                  <span>Pick a date</span>
-                                )}
+                                startImmediately && "opacity-60 bg-gray-50",
+                                !field.value && "text-muted-foreground"
+                              )}
+                              disabled={startImmediately}>
+                              {field.value ? (
+                                format(field.value, "PPP")
+                              ) : (
+                                <span>Pick a date</span>
+                              )}
                                 <CalendarIcon className='ml-auto h-3 w-3 sm:h-4 sm:w-4 opacity-70' />
-                              </Button>
-                            </FormControl>
-                          </PopoverTrigger>
-                          <PopoverContent className='w-auto p-0' align='start'>
-                            <Calendar
-                              mode='single'
-                              selected={field.value}
-                              onSelect={field.onChange}
-                              disabled={(date) =>
-                                date < new Date() || startImmediately
-                              }
-                              initialFocus
-                            />
-                          </PopoverContent>
-                        </Popover>
-                      </div>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
+                            </Button>
+                          </FormControl>
+                        </PopoverTrigger>
+                        <PopoverContent className='w-auto p-0' align='start'>
+                          <Calendar
+                            mode='single'
+                            selected={field.value}
+                            onSelect={field.onChange}
+                            disabled={(date) =>
+                              date < new Date() || startImmediately
+                            }
+                            initialFocus
+                          />
+                        </PopoverContent>
+                      </Popover>
+                    </div>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
 
               <div>
-                <FormField
-                  control={form.control}
-                  name='startTime'
-                  render={({ field }) => (
-                    <FormItem>
+              <FormField
+                control={form.control}
+                name='startTime'
+                render={({ field }) => (
+                  <FormItem>
                       <FormLabel className='text-gray-700 font-medium text-sm sm:text-base'>
-                        Start Time
-                      </FormLabel>
-                      <FormControl>
-                        <div className='relative'>
-                          <Input
-                            type='time'
-                            {...field}
-                            disabled={startImmediately}
-                            className={cn(
+                      Start Time
+                    </FormLabel>
+                    <FormControl>
+                      <div className='relative'>
+                        <Input
+                          type='time'
+                          {...field}
+                          disabled={startImmediately}
+                          className={cn(
                               "pl-8 sm:pl-9 border-gray-300 focus-visible:ring-tawakal-blue focus-visible:border-tawakal-blue h-10 sm:h-11 text-xs sm:text-sm",
-                              startImmediately && "opacity-60 bg-gray-50"
-                            )}
-                          />
+                            startImmediately && "opacity-60 bg-gray-50"
+                          )}
+                        />
                           <Clock className='absolute left-2 sm:left-3 top-2.5 sm:top-3 h-3 w-3 sm:h-4 sm:w-4 text-gray-500' />
-                        </div>
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
+                      </div>
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
 
               <div>
-                <FormField
-                  control={form.control}
-                  name='duration'
-                  render={({ field }) => (
-                    <FormItem>
+              <FormField
+                control={form.control}
+                name='duration'
+                render={({ field }) => (
+                  <FormItem>
                       <FormLabel className='text-gray-700 font-medium text-sm sm:text-base'>
-                        Duration (hours)
-                      </FormLabel>
-                      <FormControl>
-                        <div className='flex items-center'>
-                          <Button
-                            type='button'
-                            variant='outline'
-                            size='icon'
+                      Duration (hours)
+                    </FormLabel>
+                    <FormControl>
+                      <div className='flex items-center'>
+                        <Button
+                          type='button'
+                          variant='outline'
+                          size='icon'
                             className='h-10 w-8 sm:h-11 sm:w-10 rounded-r-none border-gray-300 text-gray-700 text-xs sm:text-sm'
-                            onClick={() => {
-                              const currentValue = field.value || 1;
-                              if (currentValue > 1) {
-                                field.onChange(currentValue - 1);
-                              }
-                            }}>
-                            -
-                          </Button>
-                          <Input
-                            type='number'
-                            min={1}
+                          onClick={() => {
+                            const currentValue = field.value || 1;
+                            if (currentValue > 1) {
+                              field.onChange(currentValue - 1);
+                            }
+                          }}>
+                          -
+                        </Button>
+                        <Input
+                          type='number'
+                          min={1}
                             className='h-10 sm:h-11 text-center rounded-none border-x-0 border-gray-300 text-xs sm:text-sm'
-                            {...field}
-                            onChange={(e) => {
-                              const value = parseInt(e.target.value);
-                              if (!isNaN(value) && value > 0) {
-                                field.onChange(value);
-                              }
-                            }}
-                          />
-                          <Button
-                            type='button'
-                            variant='outline'
-                            size='icon'
+                          {...field}
+                          onChange={(e) => {
+                            const value = parseInt(e.target.value);
+                            if (!isNaN(value) && value > 0) {
+                              field.onChange(value);
+                            }
+                          }}
+                        />
+                        <Button
+                          type='button'
+                          variant='outline'
+                          size='icon'
                             className='h-10 w-8 sm:h-11 sm:w-10 rounded-l-none border-gray-300 text-gray-700 text-xs sm:text-sm'
-                            onClick={() => {
-                              const currentValue = field.value || 0;
-                              field.onChange(currentValue + 1);
-                            }}>
-                            +
-                          </Button>
-                        </div>
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+                          onClick={() => {
+                            const currentValue = field.value || 0;
+                            field.onChange(currentValue + 1);
+                          }}>
+                          +
+                        </Button>
+                      </div>
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
               </div>
             </div>
           </div>
@@ -731,57 +731,57 @@ export function CreatePollForm({
                   <div className='space-y-2'>
                     <div className='flex items-center'>
                       <span className='text-xs sm:text-sm text-gray-500 font-medium'>
-                        Image (optional)
-                      </span>
-                    </div>
+                          Image (optional)
+                        </span>
+                      </div>
                     <div className='flex flex-col sm:flex-row gap-2'>
-                      <Input
-                        type='file'
-                        accept='image/*'
-                        id={`option-image-${index}`}
+                        <Input
+                          type='file'
+                          accept='image/*'
+                          id={`option-image-${index}`}
                         className='flex-1 text-xs sm:text-sm border-gray-300 h-9 sm:h-10'
-                        onChange={(e) => {
-                          const file = e.target.files?.[0];
-                          handleOptionImageChange(
-                            index,
-                            file,
-                            form.getValues(
-                              `options.${index}.imageDescription`
-                            ) || ""
-                          );
-                        }}
-                      />
-                      <Input
-                        placeholder='Image description'
-                        value={option.imageDescription || ""}
-                        onChange={(e) => {
-                          handleOptionImageChange(
-                            index,
-                            option.image,
-                            e.target.value
-                          );
-                        }}
+                          onChange={(e) => {
+                            const file = e.target.files?.[0];
+                            handleOptionImageChange(
+                              index,
+                              file,
+                              form.getValues(
+                                `options.${index}.imageDescription`
+                              ) || ""
+                            );
+                          }}
+                        />
+                        <Input
+                          placeholder='Image description'
+                          value={option.imageDescription || ""}
+                          onChange={(e) => {
+                            handleOptionImageChange(
+                              index,
+                              option.image,
+                              e.target.value
+                            );
+                          }}
                         className='flex-1 text-xs sm:text-sm border-gray-300 h-9 sm:h-10'
-                      />
-                    </div>
-                    {option.image && (
+                        />
+                      </div>
+                      {option.image && (
                       <div className='flex items-center mt-1 text-xs text-green-600 bg-green-50 p-2 rounded'>
                         <Upload className='h-3 w-3 mr-1 flex-shrink-0' />
                         <span className='truncate flex-1'>
                           {option.image.name}
                         </span>
-                        <Button
-                          type='button'
-                          variant='ghost'
-                          size='sm'
+                          <Button
+                            type='button'
+                            variant='ghost'
+                            size='sm'
                           className='ml-2 h-6 w-6 p-0 text-gray-400 hover:text-red-400'
-                          onClick={() =>
-                            handleOptionImageChange(index, undefined, "")
-                          }>
-                          <Trash2 className='h-3 w-3' />
-                        </Button>
-                      </div>
-                    )}
+                            onClick={() =>
+                              handleOptionImageChange(index, undefined, "")
+                            }>
+                            <Trash2 className='h-3 w-3' />
+                          </Button>
+                        </div>
+                      )}
                   </div>
                 </div>
               ))}
@@ -792,7 +792,7 @@ export function CreatePollForm({
               </p>
             )}
           </div>
-        </div>
+            </div>
 
         <div className='flex flex-col sm:flex-row sm:justify-end gap-3 p-4 sm:p-6 border-t mt-6'>
           <Button

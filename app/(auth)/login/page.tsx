@@ -15,13 +15,13 @@ export default function LoginPage() {
           <Image
             src='/logo.png'
             alt='Tawakal Express Logo'
-            width={140}
-            height={140}
+            width={200}
+            height={200}
             priority
-            className='mb-2 sm:w-[180px] sm:h-[180px]'
+            className='mb-2 w-[140px] h-[50px] sm:w-[200px] sm:h-[70px]'
           />
         </div>
-        <h1 className='text-2xl sm:text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-tawakal-green via-tawakal-blue to-tawakal-red animate-gradient-x px-2'>
+        <h1 className='text-2xl md:text-2xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-tawakal-green via-tawakal-blue to-tawakal-red animate-gradient-x px-2'>
           Tawakal Voting System
         </h1>
       </div>

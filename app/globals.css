@@ -86,6 +86,15 @@
       opacity: 0.4;
     }
   }
+  
+  @keyframes spin-reverse {
+    from {
+      transform: rotate(360deg);
+    }
+    to {
+      transform: rotate(0deg);
+    }
+  }
 }
 
 :root {
@@ -181,6 +190,10 @@
 
 .animate-pulse-slow {
   animation: pulse-slow 4s ease-in-out infinite;
+}
+
+.animate-spin-reverse {
+  animation: spin-reverse 1s linear infinite;
 }
 
 /* Glassmorphism utilities */

@@ -1,6 +1,7 @@
 import "./globals.css";
 import type { Metadata } from "next";
 import { Geist_Mono } from "next/font/google";
+import { NavigationProvider } from "@/components/providers/navigation-provider";
 
 const geistMono = Geist_Mono({
   variable: "--font-geist-mono",
@@ -19,7 +20,9 @@ export default function RootLayout({
 }>) {
   return (
     <html lang='en'>
-      <body className={`${geistMono.className} antialiased`}>{children}</body>
+      <body className={`${geistMono.className} antialiased`}>
+        <NavigationProvider>{children}</NavigationProvider>
+      </body>
     </html>
   );
 }

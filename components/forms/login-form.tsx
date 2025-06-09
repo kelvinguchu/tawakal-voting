@@ -25,12 +25,14 @@ import {
 } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { AlertCircle, Lock, Mail } from "lucide-react";
+import { useNavigation } from "@/components/providers/navigation-provider";
 
 type LoginFormValues = z.infer<typeof loginSchema>;
 
 export function LoginForm() {
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const { startLoading } = useNavigation();
   const supabase = createClient();
 
   const form = useForm<LoginFormValues>({
@@ -54,6 +56,9 @@ export function LoginForm() {
       if (error) {
         throw error;
       }
+
+      // Start loading animation before navigation
+      startLoading();
 
       // Force a full page refresh to trigger middleware auth checks
       // This ensures proper handling across server/client boundaries

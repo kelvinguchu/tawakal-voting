@@ -13,7 +13,7 @@ import {
   EmptyPollsState,
 } from "@/components/dashboard/poll-loading";
 import { generatePollUrl } from "@/lib/utils/slug";
-import Link from "next/link";
+import { LoadingLink } from "@/components/ui/loading-link";
 
 export const metadata: Metadata = {
   title: "Dashboard - Tawakal Voting System",
@@ -147,14 +147,14 @@ async function PollsList({
                 Scheduled
               </div>
             ) : (
-              // Use Link navigation for both active and closed polls
-              <Link href={generatePollUrl(poll.title)}>
+              // Use LoadingLink navigation for both active and closed polls
+              <LoadingLink href={generatePollUrl(poll.title)}>
                 <Button
                   variant={type === "closed" ? "outline" : "default"}
                   className={`w-full mt-auto ${style.buttonClass}`}>
                   {style.buttonText}
                 </Button>
-              </Link>
+              </LoadingLink>
             )}
           </CardContent>
         </Card>

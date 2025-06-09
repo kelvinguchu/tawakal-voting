@@ -2,8 +2,8 @@
 
 import { useState } from "react";
 import Image from "next/image";
-import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { LoadingLink } from "@/components/ui/loading-link";
 import { Button } from "@/components/ui/button";
 import {
   Menu,
@@ -95,14 +95,16 @@ export default function Navbar({
               <Menu className='h-5 w-5' />
             </Button>
 
-            <Link href='/dashboard' className='flex items-center space-x-2'>
+            <LoadingLink
+              href='/dashboard'
+              className='flex items-center space-x-2'>
               <Image
                 src='/logo.png'
                 alt='Tawakal Express Logo'
                 width={100}
                 height={100}
               />
-            </Link>
+            </LoadingLink>
           </div>
 
           {/* User Profile Dropdown */}
@@ -129,10 +131,10 @@ export default function Navbar({
                 </DropdownMenuLabel>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem asChild>
-                  <Link href='/profile' className='cursor-pointer'>
+                  <LoadingLink href='/profile' className='cursor-pointer'>
                     <User className='h-4 w-4 mr-2' />
                     <span>Profile</span>
-                  </Link>
+                  </LoadingLink>
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem
@@ -165,10 +167,10 @@ export default function Navbar({
                     asChild
                     className='w-full bg-tawakal-green hover:bg-tawakal-green/90 text-white'
                     onClick={handleNavClick}>
-                    <Link href='/admin/create-poll'>
+                    <LoadingLink href='/admin/create-poll'>
                       <Plus size={16} className='mr-2' />
                       Create Poll
-                    </Link>
+                    </LoadingLink>
                   </Button>
                 </div>
               )}
@@ -180,7 +182,7 @@ export default function Navbar({
                 </h3>
                 <div className='space-y-1'>
                   {navItems.map((item) => (
-                    <Link
+                    <LoadingLink
                       key={item.href}
                       href={item.href}
                       onClick={handleNavClick}
@@ -192,7 +194,7 @@ export default function Navbar({
                       )}>
                       <span className={item.color}>{item.icon}</span>
                       {item.name}
-                    </Link>
+                    </LoadingLink>
                   ))}
                 </div>
               </div>
@@ -222,7 +224,7 @@ export default function Navbar({
                     {/* Admin Navigation */}
                     <div className='space-y-1'>
                       {adminNavItems.map((item) => (
-                        <Link
+                        <LoadingLink
                           key={item.href}
                           href={item.href}
                           onClick={handleNavClick}
@@ -234,7 +236,7 @@ export default function Navbar({
                           )}>
                           <span className={item.color}>{item.icon}</span>
                           {item.name}
-                        </Link>
+                        </LoadingLink>
                       ))}
                     </div>
                   </div>

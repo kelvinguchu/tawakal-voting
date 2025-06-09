@@ -1,8 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { LoadingLink } from "@/components/ui/loading-link";
 import { User } from "@/lib/types/database";
 import { cn } from "@/lib/utils";
 import { Home, Users, Plus, UserPlus } from "lucide-react";
@@ -80,10 +80,10 @@ export function DashSidebar({
               <Button
                 asChild
                 className='w-full bg-tawakal-green hover:bg-tawakal-green/90 text-white'>
-                <Link href='/admin/create-poll'>
+                <LoadingLink href='/admin/create-poll'>
                   <Plus size={16} className='mr-2' />
                   Create Poll
-                </Link>
+                </LoadingLink>
               </Button>
             </div>
           )}
@@ -103,7 +103,7 @@ export function DashSidebar({
                         ? item.bgActiveClass
                         : "hover:bg-muted"
                     )}>
-                    <Link
+                    <LoadingLink
                       href={item.href}
                       onClick={() => setIsMobileMenuOpen(false)}>
                       <span className={item.color}>{item.icon}</span>
@@ -113,7 +113,7 @@ export function DashSidebar({
                         }>
                         {item.name}
                       </span>
-                    </Link>
+                    </LoadingLink>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
               ))}
@@ -151,7 +151,7 @@ export function DashSidebar({
                             ? item.bgActiveClass
                             : "hover:bg-muted"
                         )}>
-                        <Link
+                        <LoadingLink
                           href={item.href}
                           onClick={() => setIsMobileMenuOpen(false)}>
                           <span className={item.color}>{item.icon}</span>
@@ -163,7 +163,7 @@ export function DashSidebar({
                             }>
                             {item.name}
                           </span>
-                        </Link>
+                        </LoadingLink>
                       </SidebarMenuButton>
                     </SidebarMenuItem>
                   ))}
