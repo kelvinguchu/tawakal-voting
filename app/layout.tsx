@@ -19,7 +19,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang='en'>
-      <body className={geistMono.className}>{children}</body>
+      <body className={`${geistMono.className} antialiased`}>{children}</body>
     </html>
   );
 }

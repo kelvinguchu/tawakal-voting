@@ -12,15 +12,8 @@ import {
   PollsLoading,
   EmptyPollsState,
 } from "@/components/dashboard/poll-loading";
-import {
-  Drawer,
-  DrawerContent,
-  DrawerHeader,
-  DrawerTitle,
-  DrawerTrigger,
-  DrawerDescription,
-} from "@/components/ui/drawer";
-import { PollDetail } from "@/components/polls/poll-detail";
+import { generatePollUrl } from "@/lib/utils/slug";
+import Link from "next/link";
 
 export const metadata: Metadata = {
   title: "Dashboard - Tawakal Voting System",
@@ -154,29 +147,14 @@ async function PollsList({
                 Scheduled
               </div>
             ) : (
-              // Use drawer for both active and closed polls
-              <Drawer>
-                <DrawerTrigger asChild>
-                  <Button
-                    variant={type === "closed" ? "outline" : "default"}
-                    className={`w-full mt-auto ${style.buttonClass}`}>
-                    {style.buttonText}
-                  </Button>
-                </DrawerTrigger>
-                <DrawerContent className='min-h-[95vh]'>
-                  <DrawerHeader className='sr-only'>
-                    <DrawerTitle>{poll.title}</DrawerTitle>
-                    <DrawerDescription>
-                      {type === "active"
-                        ? "Vote on this poll"
-                        : "View closed poll results"}
-                    </DrawerDescription>
-                  </DrawerHeader>
-                  <div className='p-6'>
-                    <PollDetail pollId={poll.id} userId={userId} />
-                  </div>
-                </DrawerContent>
-              </Drawer>
+              // Use Link navigation for both active and closed polls
+              <Link href={generatePollUrl(poll.title)}>
+                <Button
+                  variant={type === "closed" ? "outline" : "default"}
+                  className={`w-full mt-auto ${style.buttonClass}`}>
+                  {style.buttonText}
+                </Button>
+              </Link>
             )}
           </CardContent>
         </Card>

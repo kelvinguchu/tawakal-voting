@@ -32,6 +32,7 @@ export async function generateMetadata({
       description: "View poll details and results",
     };
   } catch (error) {
+    console.error("Error generating metadata:", error);
     return {
       title: "Poll Details - Tawakal Voting System",
       description: "View poll details and results",
@@ -56,10 +57,10 @@ async function PollStatusPreloader() {
 export default async function PollPage({
   params,
   searchParams,
-}: {
+}: Readonly<{
   params: Params;
   searchParams: SearchParams;
-}) {
+}>) {
   // Await the params to get the actual values
   const { id: pollId } = await params;
   const supabase = await createClient();

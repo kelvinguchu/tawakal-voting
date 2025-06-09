@@ -158,7 +158,7 @@ export async function submitVote(
         const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
 
         // Create a custom fetch with timeout
-        const fetchWithTimeout = (
+        const fetchWithTimeout = async (
           url: RequestInfo | URL,
           options: RequestInit = {},
           timeout = 30000
@@ -169,9 +169,11 @@ export async function submitVote(
           // Create a timeout to abort the fetch
           const timeoutId = setTimeout(() => controller.abort(), timeout);
 
-          return fetch(url, { ...options, signal }).finally(() =>
-            clearTimeout(timeoutId)
-          );
+          try {
+            return await fetch(url, { ...options, signal });
+          } finally {
+            clearTimeout(timeoutId);
+          }
         };
 
         // Create a new client with the service role key to bypass RLS
@@ -381,7 +383,7 @@ export async function getUserVote(pollId: string): Promise<{
           }
 
           return {
-            optionId: adminData?.option_id || null,
+            optionId: adminData?.option_id ?? null,
             success: true,
           };
         } catch (adminError) {
@@ -412,7 +414,7 @@ export async function getUserVote(pollId: string): Promise<{
     }
 
     return {
-      optionId: data?.option_id || null,
+      optionId: data?.option_id ?? null,
       success: true,
     };
   } catch (error) {

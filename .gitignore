@@ -42,6 +42,7 @@ next-env.d.ts
 
 #supabase
 schema.sql
+storage-policies.sql
 supabase/migrations/*
 
 #app

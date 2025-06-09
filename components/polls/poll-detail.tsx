@@ -1,14 +1,6 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import {
   ArrowLeft,
@@ -18,9 +10,10 @@ import {
   CheckCircle2,
   Loader2,
   Info,
-  X,
   RefreshCw,
+  ZoomIn,
 } from "lucide-react";
+import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import Link from "next/link";
 import { toast } from "sonner";
 import { Poll, PollOption } from "@/lib/types/database";
@@ -29,7 +22,7 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import Image from "next/image";
 import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
-import { DrawerClose } from "@/components/ui/drawer";
+import { useRouter } from "next/navigation";
 import { submitVote, getUserVote } from "@/app/actions/polls/vote-on-poll";
 import {
   fetchPollWithOptions,
@@ -53,7 +46,40 @@ interface PollDetailProps {
   userId: string;
 }
 
-export function PollDetail({ pollId, userId }: PollDetailProps) {
+// Image lightbox component
+function ImageLightbox({
+  imageUrl,
+  altText,
+  isOpen,
+  onClose,
+}: Readonly<{
+  imageUrl: string;
+  altText: string;
+  isOpen: boolean;
+  onClose: () => void;
+}>) {
+  return (
+    <Dialog open={isOpen} onOpenChange={onClose}>
+      <DialogContent className='max-w-4xl w-full p-0 bg-black/90 border-none'>
+        <DialogTitle className='sr-only'>View image: {altText}</DialogTitle>
+        <div className='relative w-full h-[80vh] flex items-center justify-center'>
+          <div className='relative w-full h-full'>
+            <Image
+              src={imageUrl}
+              alt={altText}
+              fill
+              className='object-contain'
+              sizes='(max-width: 768px) 100vw, 80vw'
+            />
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+export function PollDetail({ pollId, userId }: Readonly<PollDetailProps>) {
+  const router = useRouter();
   const supabase = createClient();
   const [poll, setPoll] = useState<Poll | null>(null);
   const [options, setOptions] = useState<PollOption[]>([]);
@@ -66,6 +92,19 @@ export function PollDetail({ pollId, userId }: PollDetailProps) {
   const [totalVotes, setTotalVotes] = useState(0);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [checkedVoteStatus, setCheckedVoteStatus] = useState(false);
+  // Image lightbox state
+  const [lightboxImage, setLightboxImage] = useState<{
+    url: string;
+    alt: string;
+  } | null>(null);
+
+  const handleImageClick = (imageUrl: string, optionText: string) => {
+    setLightboxImage({ url: imageUrl, alt: optionText });
+  };
+
+  const closeLightbox = () => {
+    setLightboxImage(null);
+  };
 
   // Direct check for existing votes
   const checkDirectVoteStatus = async () => {
@@ -91,6 +130,7 @@ export function PollDetail({ pollId, userId }: PollDetailProps) {
 
       return false;
     } catch (error) {
+      console.error("Error checking direct vote status:", error);
       return false;
     }
   };
@@ -137,7 +177,7 @@ export function PollDetail({ pollId, userId }: PollDetailProps) {
       // Set results from the fetched data
       if (pollData.results) {
         setResults(pollData.results);
-        setTotalVotes(pollData.total_votes || 0);
+        setTotalVotes(pollData.total_votes ?? 0);
       }
 
       // Fetch option images using server action
@@ -309,57 +349,38 @@ export function PollDetail({ pollId, userId }: PollDetailProps) {
           <p className='text-muted-foreground'>
             The poll you're looking for doesn't exist or has been removed.
           </p>
-          <DrawerClose asChild>
-            <Button>
-              <X className='mr-2 h-4 w-4' />
-              Close
-            </Button>
-          </DrawerClose>
+          <Button onClick={() => router.back()}>
+            <ArrowLeft className='mr-2 h-4 w-4' />
+            Go Back
+          </Button>
         </div>
       </div>
     );
   }
 
   return (
-    <div className='space-y-6 w-full max-h-[85vh] overflow-y-auto px-1'>
-      <div className='flex items-center justify-between gap-2 sticky top-0 bg-background z-10 py-2'>
-        <Button variant='ghost' size='sm' asChild>
-          <Link href='/polls'>
-            <ArrowLeft className='h-4 w-4 mr-1' />
-            Back to Polls
-          </Link>
-        </Button>
-        <DrawerClose asChild>
-          <Button variant='ghost' size='sm'>
-            <X className='h-4 w-4 mr-1' />
-            Close
-          </Button>
-        </DrawerClose>
-      </div>
+    <div className='w-full space-y-6'>
+      {/* Image Lightbox */}
+      {lightboxImage && (
+        <ImageLightbox
+          imageUrl={lightboxImage.url}
+          altText={lightboxImage.alt}
+          isOpen={!!lightboxImage}
+          onClose={closeLightbox}
+        />
+      )}
 
-      <Card className='w-full'>
-        <CardHeader className='sticky top-14 bg-card z-10'>
-          <div className='flex justify-between items-center'>
-            <CardTitle className='text-2xl'>{poll?.title}</CardTitle>
-            <Button
-              variant='ghost'
-              size='sm'
-              onClick={() => {
-                setLoading(true);
-                fetchPollDetails().then(() => setLoading(false));
-              }}
-              disabled={loading}
-              title='Refresh poll data'>
-              <RefreshCw
-                className={`h-4 w-4 ${loading ? "animate-spin" : ""}`}
-              />
-            </Button>
-          </div>
-          <CardDescription>
-            <div className='flex items-center mt-2'>
+      {/* Poll Header */}
+      <div className='space-y-4'>
+        <div className='flex items-center justify-between'>
+          <div className='flex-1'>
+            <h1 className='text-3xl font-bold text-tawakal-blue mb-2'>
+              {poll.title}
+            </h1>
+            <div className='flex items-center'>
               <div
                 className={cn(
-                  "flex items-center px-3 py-1 rounded-full text-sm",
+                  "flex items-center px-3 py-1 rounded-full text-sm font-medium",
                   statusInfo?.bgColor,
                   statusInfo?.color
                 )}>
@@ -367,237 +388,264 @@ export function PollDetail({ pollId, userId }: PollDetailProps) {
                 <span className='ml-2'>{statusInfo?.text}</span>
               </div>
             </div>
-          </CardDescription>
-        </CardHeader>
-        <CardContent className='space-y-6'>
-          {poll.description && (
-            <div className='border-b pb-4'>
-              <p className='text-muted-foreground'>{poll.description}</p>
-            </div>
-          )}
+          </div>
+          <Button
+            variant='outline'
+            size='sm'
+            onClick={() => {
+              setLoading(true);
+              fetchPollDetails().then(() => setLoading(false));
+            }}
+            disabled={loading}
+            title='Refresh poll data'>
+            <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
+            Refresh
+          </Button>
+        </div>
 
-          {/* Display alert if user has already voted */}
-          {hasVoted && (
-            <Alert className='bg-tawakal-green/10 border-tawakal-green/20'>
-              <CheckCircle2 className='h-4 w-4 text-tawakal-green' />
-              <AlertTitle className='text-tawakal-green font-semibold'>
-                You have already voted
-              </AlertTitle>
-              <AlertDescription>
-                Your vote has been recorded for this poll. You can see the
-                current results below.
-                {userVote && options.find((o) => o.id === userVote) && (
-                  <span className='block mt-1 font-medium'>
-                    You voted for:{" "}
-                    {options.find((o) => o.id === userVote)?.option_text}
-                  </span>
+        {poll.description && (
+          <div className='bg-muted/30 rounded-lg p-4'>
+            <p className='text-muted-foreground'>{poll.description}</p>
+          </div>
+        )}
+      </div>
+
+      {/* Status Alerts */}
+      {hasVoted && (
+        <Alert className='bg-tawakal-green/10 border-tawakal-green/20'>
+          <CheckCircle2 className='h-4 w-4 text-tawakal-green' />
+          <AlertTitle className='text-tawakal-green font-semibold'>
+            You have already voted
+          </AlertTitle>
+          <AlertDescription>
+            Your vote has been recorded for this poll. You can see the current
+            results below.
+            {userVote && options.find((o) => o.id === userVote) && (
+              <span className='block mt-1 font-medium'>
+                You voted for:{" "}
+                {options.find((o) => o.id === userVote)?.option_text}
+              </span>
+            )}
+          </AlertDescription>
+        </Alert>
+      )}
+
+      {isPollClosed && (
+        <Alert className='bg-tawakal-gold/10 border-tawakal-gold/20'>
+          <TimerOff className='h-4 w-4 text-tawakal-gold' />
+          <AlertTitle className='text-tawakal-gold'>Poll is closed</AlertTitle>
+          <AlertDescription>
+            This poll has ended. Voting is no longer available.
+          </AlertDescription>
+        </Alert>
+      )}
+
+      {isPollScheduled && (
+        <Alert className='bg-tawakal-blue/10 border-tawakal-blue/20'>
+          <Calendar className='h-4 w-4 text-tawakal-blue' />
+          <AlertTitle className='text-tawakal-blue'>
+            Poll is scheduled
+          </AlertTitle>
+          <AlertDescription>
+            This poll will open for voting on {formatDate(poll.start_time)}.
+            Please check back then to cast your vote.
+          </AlertDescription>
+        </Alert>
+      )}
+
+      {errorMessage && (
+        <Alert className='bg-red-50 border-red-200'>
+          <Info className='h-4 w-4 text-red-500' />
+          <AlertTitle className='text-red-600'>Error</AlertTitle>
+          <AlertDescription>{errorMessage}</AlertDescription>
+        </Alert>
+      )}
+
+      {/* Options Section */}
+      <div className='space-y-4'>
+        <div className='flex items-center justify-between'>
+          <h2 className='text-xl font-semibold'>
+            {showResults ? "Results" : "Vote Options"}
+          </h2>
+          {showResults && totalVotes > 0 && (
+            <p className='text-sm text-muted-foreground'>
+              Total votes: {totalVotes}
+            </p>
+          )}
+        </div>
+        {/* Hint about image viewing */}
+        {options.some((option) => optionImages[option.id]) && (
+          <p className='text-sm text-muted-foreground flex items-center gap-1'>
+            <ZoomIn className='h-3 w-3' />
+            Click on images to view them in full size
+          </p>
+        )}
+
+        <div className='grid gap-4 max-w-4xl'>
+          {options.map((option) => {
+            const voteCount = results[option.id] || 0;
+            const votePercentage =
+              totalVotes > 0 ? Math.round((voteCount / totalVotes) * 100) : 0;
+
+            return (
+              <div
+                key={option.id}
+                className={cn(
+                  "border rounded-lg p-6 relative transition-all hover:shadow-sm",
+                  !hasVoted && !showResults
+                    ? "cursor-pointer hover:border-tawakal-green/50 hover:bg-tawakal-green/5"
+                    : "cursor-default",
+                  selectedOption === option.id &&
+                    "border-tawakal-green bg-tawakal-green/5",
+                  userVote === option.id &&
+                    "border-tawakal-green bg-tawakal-green/10"
                 )}
-              </AlertDescription>
-            </Alert>
-          )}
-
-          {/* Display alert if poll is closed */}
-          {isPollClosed && (
-            <Alert className='bg-tawakal-gold/10 border-tawakal-gold/20'>
-              <TimerOff className='h-4 w-4 text-tawakal-gold' />
-              <AlertTitle className='text-tawakal-gold'>
-                Poll is closed
-              </AlertTitle>
-              <AlertDescription>
-                This poll has ended. Voting is no longer available.
-              </AlertDescription>
-            </Alert>
-          )}
-
-          {/* Display alert if poll is scheduled */}
-          {isPollScheduled && (
-            <Alert className='bg-tawakal-blue/10 border-tawakal-blue/20'>
-              <Calendar className='h-4 w-4 text-tawakal-blue' />
-              <AlertTitle className='text-tawakal-blue'>
-                Poll is scheduled
-              </AlertTitle>
-              <AlertDescription>
-                This poll will open for voting on {formatDate(poll.start_time)}.
-                Please check back then to cast your vote.
-              </AlertDescription>
-            </Alert>
-          )}
-
-          {/* Display any error messages */}
-          {errorMessage && (
-            <Alert className='bg-red-50 border-red-200'>
-              <X className='h-4 w-4 text-red-500' />
-              <AlertTitle className='text-red-600'>Error</AlertTitle>
-              <AlertDescription>{errorMessage}</AlertDescription>
-            </Alert>
-          )}
-
-          <div className='space-y-4'>
-            <h3 className='text-lg font-medium'>
-              {showResults ? "Results" : "Options"}
-            </h3>
-            <div className='space-y-3'>
-              {options.map((option) => {
-                const voteCount = results[option.id] || 0;
-                const votePercentage =
-                  totalVotes > 0
-                    ? Math.round((voteCount / totalVotes) * 100)
-                    : 0;
-
-                return (
-                  <div
-                    key={option.id}
-                    className={cn(
-                      "border rounded-lg p-4 relative transition-all",
-                      !hasVoted && !showResults
-                        ? "cursor-pointer hover:border-tawakal-green/50"
-                        : "cursor-default",
-                      selectedOption === option.id &&
-                        "border-tawakal-green bg-tawakal-green/5",
-                      userVote === option.id &&
-                        "border-tawakal-green bg-tawakal-green/5"
-                    )}
-                    onClick={() => {
-                      // Extra check to prevent clicking after vote
-                      if (
-                        !userVote &&
-                        !hasVoted &&
-                        !showResults &&
-                        !submitting
-                      ) {
-                        setSelectedOption(option.id);
-                      }
-                    }}>
-                    <div className='flex gap-4 items-center'>
-                      {optionImages[option.id] && (
-                        <div className='w-16 h-16 rounded-md overflow-hidden relative flex-shrink-0'>
-                          <Image
-                            src={optionImages[option.id]}
-                            alt={option.option_text}
-                            fill
-                            className='object-cover'
-                          />
+                onClick={() => {
+                  // Extra check to prevent clicking after vote
+                  if (!userVote && !hasVoted && !showResults && !submitting) {
+                    setSelectedOption(option.id);
+                  }
+                }}>
+                <div className='flex gap-6 items-center'>
+                  {optionImages[option.id] && (
+                    <div className='relative flex-shrink-0'>
+                      <div
+                        className='w-20 h-20 rounded-lg overflow-hidden relative cursor-pointer group'
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleImageClick(
+                            optionImages[option.id],
+                            option.option_text
+                          );
+                        }}>
+                        <Image
+                          src={optionImages[option.id]}
+                          alt={option.option_text}
+                          fill
+                          className='object-cover transition-transform group-hover:scale-105'
+                        />
+                        <div className='absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors flex items-center justify-center'>
+                          <ZoomIn className='h-5 w-5 text-white opacity-0 group-hover:opacity-100 transition-opacity' />
                         </div>
-                      )}
-                      <div className='flex-grow'>
-                        <div className='flex items-center justify-between'>
-                          <div className='font-medium'>
-                            {option.option_text}
-                          </div>
-                          {showResults && (
-                            <div className='text-sm font-medium'>
-                              {votePercentage}% ({voteCount} votes)
-                            </div>
-                          )}
-                        </div>
-
-                        {showResults && (
-                          <div className='mt-2'>
-                            <Progress
-                              value={votePercentage}
-                              className='h-2 bg-muted'
-                              indicatorClassName={
-                                userVote === option.id
-                                  ? "bg-tawakal-green"
-                                  : "bg-tawakal-blue/60"
-                              }
-                            />
-                          </div>
-                        )}
                       </div>
-
-                      {userVote === option.id && (
-                        <div className='flex-shrink-0'>
-                          <CheckCircle2 className='h-5 w-5 text-tawakal-green' />
+                    </div>
+                  )}
+                  <div className='flex-grow space-y-2'>
+                    <div className='flex items-center justify-between'>
+                      <div className='font-semibold text-lg'>
+                        {option.option_text}
+                      </div>
+                      {showResults && (
+                        <div className='text-right'>
+                          <div className='text-lg font-bold'>
+                            {votePercentage}%
+                          </div>
+                          <div className='text-sm text-muted-foreground'>
+                            {voteCount} votes
+                          </div>
                         </div>
                       )}
                     </div>
+
+                    {showResults && (
+                      <div className='space-y-1'>
+                        <Progress
+                          value={votePercentage}
+                          className='h-3 bg-muted'
+                          indicatorClassName={
+                            userVote === option.id
+                              ? "bg-tawakal-green"
+                              : "bg-tawakal-blue/60"
+                          }
+                        />
+                      </div>
+                    )}
                   </div>
-                );
-              })}
-            </div>
-          </div>
-        </CardContent>
-        <CardFooter className='flex justify-between sticky bottom-0 bg-card z-10 border-t py-4'>
-          <DrawerClose asChild>
-            <Button variant='outline'>
-              <X className='mr-2 h-4 w-4' />
-              Close
-            </Button>
-          </DrawerClose>
-          {isPollAcceptingVotes && !hasVoted && (
-            <Button
-              onClick={handleVote}
-              disabled={!selectedOption || submitting}
-              className='bg-tawakal-green hover:bg-tawakal-green/90'>
-              {submitting ? (
-                <>
-                  <Loader2 className='mr-2 h-4 w-4 animate-spin' />
-                  Submitting...
-                </>
-              ) : (
-                "Submit Vote"
-              )}
-            </Button>
-          )}
-          {isPollScheduled && (
-            <Button
-              disabled
-              className='bg-tawakal-blue/20 text-tawakal-blue cursor-not-allowed'>
-              <Calendar className='mr-2 h-4 w-4' />
-              Opens {formatDate(poll?.start_time, false)}
-            </Button>
-          )}
-        </CardFooter>
-      </Card>
+
+                  {userVote === option.id && (
+                    <div className='flex-shrink-0'>
+                      <CheckCircle2 className='h-6 w-6 text-tawakal-green' />
+                    </div>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Action Buttons */}
+      {isPollAcceptingVotes && !hasVoted && (
+        <div className='flex justify-center pt-4'>
+          <Button
+            onClick={handleVote}
+            disabled={!selectedOption || submitting}
+            size='lg'
+            className='bg-tawakal-green hover:bg-tawakal-green/90 px-8'>
+            {submitting ? (
+              <>
+                <Loader2 className='mr-2 h-5 w-5 animate-spin' />
+                Submitting Vote...
+              </>
+            ) : (
+              "Submit Your Vote"
+            )}
+          </Button>
+        </div>
+      )}
+
+      {isPollScheduled && (
+        <div className='flex justify-center pt-4'>
+          <Button
+            disabled
+            size='lg'
+            className='bg-tawakal-blue/20 text-tawakal-blue cursor-not-allowed px-8'>
+            <Calendar className='mr-2 h-5 w-5' />
+            Opens {formatDate(poll?.start_time, false)}
+          </Button>
+        </div>
+      )}
     </div>
   );
 }
 
 function PollDetailSkeleton() {
   return (
-    <div className='space-y-6 w-full'>
-      <div className='flex items-center justify-between gap-2'>
-        <Skeleton className='h-9 w-24' />
-        <Skeleton className='h-9 w-24' />
-      </div>
-
-      <Card className='w-full'>
-        <CardHeader>
-          <Skeleton className='h-8 w-2/3' />
-          <div className='mt-2'>
+    <div className='w-full space-y-6'>
+      {/* Header Skeleton */}
+      <div className='space-y-4'>
+        <div className='flex items-center justify-between'>
+          <div className='flex-1'>
+            <Skeleton className='h-8 w-2/3 mb-2' />
             <Skeleton className='h-6 w-48' />
           </div>
-        </CardHeader>
-        <CardContent className='space-y-6'>
-          <div className='border-b pb-4'>
-            <Skeleton className='h-4 w-full' />
-            <Skeleton className='h-4 w-5/6 mt-2' />
-            <Skeleton className='h-4 w-4/6 mt-2' />
-          </div>
+          <Skeleton className='h-9 w-24' />
+        </div>
+        <Skeleton className='h-16 w-full' />
+      </div>
 
-          <div className='space-y-4'>
-            <Skeleton className='h-6 w-24' />
-            <div className='space-y-3'>
-              {[1, 2, 3].map((i) => (
-                <div key={i} className='border rounded-lg p-4'>
-                  <div className='flex gap-4 items-center'>
-                    <Skeleton className='w-16 h-16 rounded-md' />
-                    <div className='flex-grow'>
-                      <Skeleton className='h-5 w-full' />
-                      <Skeleton className='h-2 w-full mt-2' />
-                    </div>
-                  </div>
+      {/* Options Skeleton */}
+      <div className='space-y-4'>
+        <Skeleton className='h-6 w-32' />
+        <div className='grid gap-4 max-w-4xl'>
+          {[1, 2, 3].map((i) => (
+            <div key={i} className='border rounded-lg p-6'>
+              <div className='flex gap-6 items-center'>
+                <Skeleton className='w-20 h-20 rounded-lg' />
+                <div className='flex-grow space-y-2'>
+                  <Skeleton className='h-6 w-full' />
+                  <Skeleton className='h-3 w-full' />
                 </div>
-              ))}
+              </div>
             </div>
-          </div>
-        </CardContent>
-        <CardFooter className='flex justify-between'>
-          <Skeleton className='h-10 w-32' />
-          <Skeleton className='h-10 w-32' />
-        </CardFooter>
-      </Card>
+          ))}
+        </div>
+      </div>
+
+      {/* Button Skeleton */}
+      <div className='flex justify-center pt-4'>
+        <Skeleton className='h-11 w-48' />
+      </div>
     </div>
   );
 }

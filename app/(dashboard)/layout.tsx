@@ -3,17 +3,15 @@
 import { useState, useEffect } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { User } from "@/lib/types/database";
-import { MobileHeader } from "@/components/layout/mobile-header";
 import { DashSidebar } from "@/components/layout/dash-sidebar";
 import { SidebarProvider } from "@/components/ui/sidebar";
 import Navbar from "@/components/layout/navbar";
-import Footer from "@/components/layout/footer";
 
 export default function DashboardLayout({
   children,
-}: {
+}: Readonly<{
   children: React.ReactNode;
-}) {
+}>) {
   const [user, setUser] = useState<User | null>(null);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const supabase = createClient();
@@ -56,11 +54,6 @@ export default function DashboardLayout({
     } else {
       console.error("Sign out error:", error);
     }
-  };
-
-  // Toggle mobile menu
-  const toggleMobileMenu = () => {
-    setIsMobileMenuOpen(!isMobileMenuOpen);
   };
 
   return (

@@ -1,16 +1,6 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
 import { Metadata } from "next";
-import { UsersTable } from "@/components/users/users-table";
-import { UserSearch } from "@/components/users/user-search";
-import { AddUserButton } from "@/components/users/add-user-button";
 import { UserManagementClient } from "@/components/users/user-management-client";
 
 export const metadata: Metadata = {

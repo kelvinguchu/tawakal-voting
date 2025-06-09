@@ -26,16 +26,7 @@ import { createClient } from "@/lib/supabase/client";
 import { motion } from "framer-motion";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
-import {
-  Drawer,
-  DrawerContent,
-  DrawerTrigger,
-  DrawerClose,
-  DrawerHeader,
-  DrawerTitle,
-  DrawerDescription,
-} from "@/components/ui/drawer";
-import { PollDetail } from "./poll-detail";
+import { generatePollUrl } from "@/lib/utils/slug";
 
 // Format date helper function
 const formatDate = (dateString: string | null, includeTime = true) => {
@@ -231,42 +222,27 @@ export function PollsList() {
               animate='visible'>
               {filteredPolls.map((poll) => (
                 <motion.div key={poll.id} variants={itemVariants}>
-                  <Drawer>
-                    <DrawerTrigger asChild>
-                      <Card className='h-full flex flex-col hover:shadow-sm transition-shadow cursor-pointer'>
-                        <CardHeader className='pb-2 border-b'>
-                          <CardTitle className='text-base font-medium text-tawakal-green line-clamp-1'>
-                            {poll.title}
-                          </CardTitle>
-                          <p className='text-xs text-muted-foreground flex items-center'>
-                            <Clock className='h-3 w-3 mr-1 inline text-tawakal-green' />
-                            Ends: {formatDate(poll.end_time, true)}
-                          </p>
-                        </CardHeader>
-                        <CardContent className='pt-4 pb-3 flex-grow flex flex-col'>
-                          <p className='text-sm text-muted-foreground mb-3 line-clamp-2 flex-grow'>
-                            {poll.description || "No description provided."}
-                          </p>
-                          <Button className='w-full mt-auto bg-tawakal-green hover:bg-tawakal-green/90'>
-                            Vote Now
-                          </Button>
-                        </CardContent>
-                      </Card>
-                    </DrawerTrigger>
-                    <DrawerContent className='min-h-[95vh]'>
-                      <DrawerHeader className='sr-only'>
-                        <DrawerTitle>{poll.title}</DrawerTitle>
-                        <DrawerDescription>
-                          View poll details and vote
-                        </DrawerDescription>
-                      </DrawerHeader>
-                      <div className='p-6'>
-                        {userId && (
-                          <PollDetail pollId={poll.id} userId={userId} />
-                        )}
-                      </div>
-                    </DrawerContent>
-                  </Drawer>
+                  <Link href={generatePollUrl(poll.title)}>
+                    <Card className='h-full flex flex-col hover:shadow-md transition-all duration-200 cursor-pointer hover:scale-[1.02]'>
+                      <CardHeader className='pb-2 border-b'>
+                        <CardTitle className='text-base font-medium text-tawakal-green line-clamp-1'>
+                          {poll.title}
+                        </CardTitle>
+                        <p className='text-xs text-muted-foreground flex items-center'>
+                          <Clock className='h-3 w-3 mr-1 inline text-tawakal-green' />
+                          Ends: {formatDate(poll.end_time, true)}
+                        </p>
+                      </CardHeader>
+                      <CardContent className='pt-4 pb-3 flex-grow flex flex-col'>
+                        <p className='text-sm text-muted-foreground mb-3 line-clamp-2 flex-grow'>
+                          {poll.description || "No description provided."}
+                        </p>
+                        <Button className='w-full mt-auto bg-tawakal-green hover:bg-tawakal-green/90'>
+                          Vote Now
+                        </Button>
+                      </CardContent>
+                    </Card>
+                  </Link>
                 </motion.div>
               ))}
             </motion.div>
@@ -294,42 +270,27 @@ export function PollsList() {
               animate='visible'>
               {filteredPolls.map((poll) => (
                 <motion.div key={poll.id} variants={itemVariants}>
-                  <Drawer>
-                    <DrawerTrigger asChild>
-                      <Card className='h-full flex flex-col hover:shadow-sm transition-shadow cursor-pointer'>
-                        <CardHeader className='pb-2 border-b'>
-                          <CardTitle className='text-base font-medium text-tawakal-blue line-clamp-1'>
-                            {poll.title}
-                          </CardTitle>
-                          <p className='text-xs text-muted-foreground flex items-center'>
-                            <Calendar className='h-3 w-3 mr-1 inline text-tawakal-blue' />
-                            Starts: {formatDate(poll.start_time, true)}
-                          </p>
-                        </CardHeader>
-                        <CardContent className='pt-4 pb-3 flex-grow flex flex-col'>
-                          <p className='text-sm text-muted-foreground mb-3 line-clamp-2 flex-grow'>
-                            {poll.description || "No description provided."}
-                          </p>
-                          <div className='py-1 px-3 text-xs rounded-full bg-tawakal-blue/10 text-tawakal-blue border border-tawakal-blue/20 w-fit'>
-                            Scheduled
-                          </div>
-                        </CardContent>
-                      </Card>
-                    </DrawerTrigger>
-                    <DrawerContent className='min-h-[95vh]'>
-                      <DrawerHeader className='sr-only'>
-                        <DrawerTitle>{poll.title}</DrawerTitle>
-                        <DrawerDescription>
-                          View upcoming poll details
-                        </DrawerDescription>
-                      </DrawerHeader>
-                      <div className='p-6'>
-                        {userId && (
-                          <PollDetail pollId={poll.id} userId={userId} />
-                        )}
-                      </div>
-                    </DrawerContent>
-                  </Drawer>
+                  <Link href={generatePollUrl(poll.title)}>
+                    <Card className='h-full flex flex-col hover:shadow-md transition-all duration-200 cursor-pointer hover:scale-[1.02]'>
+                      <CardHeader className='pb-2 border-b'>
+                        <CardTitle className='text-base font-medium text-tawakal-blue line-clamp-1'>
+                          {poll.title}
+                        </CardTitle>
+                        <p className='text-xs text-muted-foreground flex items-center'>
+                          <Calendar className='h-3 w-3 mr-1 inline text-tawakal-blue' />
+                          Starts: {formatDate(poll.start_time, true)}
+                        </p>
+                      </CardHeader>
+                      <CardContent className='pt-4 pb-3 flex-grow flex flex-col'>
+                        <p className='text-sm text-muted-foreground mb-3 line-clamp-2 flex-grow'>
+                          {poll.description || "No description provided."}
+                        </p>
+                        <div className='py-1 px-3 text-xs rounded-full bg-tawakal-blue/10 text-tawakal-blue border border-tawakal-blue/20 w-fit'>
+                          Scheduled
+                        </div>
+                      </CardContent>
+                    </Card>
+                  </Link>
                 </motion.div>
               ))}
             </motion.div>
@@ -357,44 +318,29 @@ export function PollsList() {
               animate='visible'>
               {filteredPolls.map((poll) => (
                 <motion.div key={poll.id} variants={itemVariants}>
-                  <Drawer>
-                    <DrawerTrigger asChild>
-                      <Card className='h-full flex flex-col hover:shadow-sm transition-shadow cursor-pointer'>
-                        <CardHeader className='pb-2 border-b'>
-                          <CardTitle className='text-base font-medium text-tawakal-gold line-clamp-1'>
-                            {poll.title}
-                          </CardTitle>
-                          <p className='text-xs text-muted-foreground flex items-center'>
-                            <TimerOff className='h-3 w-3 mr-1 inline text-tawakal-gold' />
-                            Closed: {formatDate(poll.end_time, true)}
-                          </p>
-                        </CardHeader>
-                        <CardContent className='pt-4 pb-3 flex-grow flex flex-col'>
-                          <p className='text-sm text-muted-foreground mb-3 line-clamp-2 flex-grow'>
-                            {poll.description || "No description provided."}
-                          </p>
-                          <Button
-                            variant='outline'
-                            className='w-full mt-auto border-tawakal-gold text-tawakal-gold hover:bg-tawakal-gold/10'>
-                            View Results
-                          </Button>
-                        </CardContent>
-                      </Card>
-                    </DrawerTrigger>
-                    <DrawerContent className='min-h-[95vh]'>
-                      <DrawerHeader className='sr-only'>
-                        <DrawerTitle>{poll.title}</DrawerTitle>
-                        <DrawerDescription>
-                          View closed poll results
-                        </DrawerDescription>
-                      </DrawerHeader>
-                      <div className='p-6'>
-                        {userId && (
-                          <PollDetail pollId={poll.id} userId={userId} />
-                        )}
-                      </div>
-                    </DrawerContent>
-                  </Drawer>
+                  <Link href={generatePollUrl(poll.title)}>
+                    <Card className='h-full flex flex-col hover:shadow-md transition-all duration-200 cursor-pointer hover:scale-[1.02]'>
+                      <CardHeader className='pb-2 border-b'>
+                        <CardTitle className='text-base font-medium text-tawakal-gold line-clamp-1'>
+                          {poll.title}
+                        </CardTitle>
+                        <p className='text-xs text-muted-foreground flex items-center'>
+                          <TimerOff className='h-3 w-3 mr-1 inline text-tawakal-gold' />
+                          Closed: {formatDate(poll.end_time, true)}
+                        </p>
+                      </CardHeader>
+                      <CardContent className='pt-4 pb-3 flex-grow flex flex-col'>
+                        <p className='text-sm text-muted-foreground mb-3 line-clamp-2 flex-grow'>
+                          {poll.description || "No description provided."}
+                        </p>
+                        <Button
+                          variant='outline'
+                          className='w-full mt-auto border-tawakal-gold text-tawakal-gold hover:bg-tawakal-gold/10'>
+                          View Results
+                        </Button>
+                      </CardContent>
+                    </Card>
+                  </Link>
                 </motion.div>
               ))}
             </motion.div>

@@ -4,8 +4,6 @@ import { cookies } from "next/headers";
 
 export async function POST(request: Request) {
   try {
-    // Get cookies for authentication
-    const cookieStore = cookies();
 
     // Create Supabase client with server context
     const supabase = await createClient();
@@ -102,7 +100,7 @@ export async function POST(request: Request) {
         .from("polls")
         .insert({
           title,
-          description: description || "",
+          description: description ?? "",
           start_time,
           end_time,
           created_by,
@@ -174,7 +172,7 @@ export async function POST(request: Request) {
                 poll_id: poll.id,
                 media_type: "link",
                 media_url: item.url,
-                description: item.description || null,
+                description: item.description ?? null,
               });
 
             if (mediaError) {
@@ -188,7 +186,7 @@ export async function POST(request: Request) {
                 poll_id: poll.id,
                 media_type: "document",
                 media_url: item.url,
-                description: item.description || null,
+                description: item.description ?? null,
               });
 
             if (mediaError) {

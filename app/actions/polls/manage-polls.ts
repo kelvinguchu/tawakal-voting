@@ -21,8 +21,6 @@ export async function changePollStatus(
   newStatus: "draft" | "scheduled" | "active" | "closed"
 ): Promise<PollManagementResult> {
   try {
-    // Verify admin permissions
-    const { userData } = await requireAdmin();
 
     const supabase = await createClient();
 
@@ -42,13 +40,12 @@ export async function changePollStatus(
     }
 
     // Perform validations based on new status
-    switch (newStatus) {
-      case "active":
-        // If activating, ensure poll has options
-        const { count: optionsCount, error: optionsError } = await supabase
-          .from("poll_options")
-          .select("*", { count: "exact", head: true })
-          .eq("poll_id", pollId);
+    if (newStatus === "active") {
+      // If activating, ensure poll has options
+      const { count: optionsCount, error: optionsError } = await supabase
+        .from("poll_options")
+        .select("*", { count: "exact", head: true })
+        .eq("poll_id", pollId);
 
         if (optionsError) {
           console.error("Error checking options:", optionsError);
@@ -58,15 +55,12 @@ export async function changePollStatus(
           };
         }
 
-        if (!optionsCount || optionsCount < 2) {
-          return {
-            success: false,
-            message: "Poll must have at least 2 options to be activated",
-          };
-        }
-        break;
-
-      // Add more validations for other statuses if needed
+      if (!optionsCount || optionsCount < 2) {
+        return {
+          success: false,
+          message: "Poll must have at least 2 options to be activated",
+        };
+      }
     }
 
     // Update the poll status

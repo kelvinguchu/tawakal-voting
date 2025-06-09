@@ -4,6 +4,7 @@ import { useState } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
+import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import {
   Form,
@@ -104,6 +105,7 @@ export function CreatePollForm({
     "link"
   );
   const [startImmediately, setStartImmediately] = useState(false);
+  const router = useRouter();
   const supabase = createClient();
 
   const form = useForm<z.infer<typeof formSchema>>({
@@ -368,18 +370,41 @@ export function CreatePollForm({
             method: "POST",
             body: formData,
           })
-            .then((res) => {
+            .then(async (res) => {
               if (!res.ok) {
+                const errorData = await res.json();
                 console.error(
-                  `Failed to upload image for option ${option.text}`
+                  `Failed to upload image for option ${option.text}:`,
+                  errorData
                 );
-                return res.json().then((data) => Promise.reject(data));
+
+                // Show specific error message to user
+                if (errorData.message?.includes("row-level security policy")) {
+                  toast.error(
+                    `Failed to upload option image: Database permission error. Please contact support.`
+                  );
+                } else if (errorData.message?.includes("Unauthorized")) {
+                  toast.error(
+                    `Failed to upload option image: You don't have permission to upload files.`
+                  );
+                } else {
+                  toast.error(
+                    `Failed to upload option image: ${
+                      errorData.message || "Unknown error"
+                    }`
+                  );
+                }
+
+                return Promise.reject(errorData);
               }
               return res.json();
             })
             .then((data) => {
               console.log(
                 `Successfully uploaded option image: ${data.filePath}`
+              );
+              toast.success(
+                `Successfully uploaded image for option: ${option.text}`
               );
               return data;
             })
@@ -410,15 +435,40 @@ export function CreatePollForm({
             method: "POST",
             body: formData,
           })
-            .then((res) => {
+            .then(async (res) => {
               if (!res.ok) {
-                console.error(`Failed to upload media ${mediaItem.file?.name}`);
-                return res.json().then((data) => Promise.reject(data));
+                const errorData = await res.json();
+                console.error(
+                  `Failed to upload media ${mediaItem.file?.name}:`,
+                  errorData
+                );
+
+                // Show specific error message to user
+                if (errorData.message?.includes("row-level security policy")) {
+                  toast.error(
+                    `Failed to upload poll media: Database permission error. Please contact support.`
+                  );
+                } else if (errorData.message?.includes("Unauthorized")) {
+                  toast.error(
+                    `Failed to upload poll media: You don't have permission to upload files.`
+                  );
+                } else {
+                  toast.error(
+                    `Failed to upload poll media: ${
+                      errorData.message || "Unknown error"
+                    }`
+                  );
+                }
+
+                return Promise.reject(errorData);
               }
               return res.json();
             })
             .then((data) => {
               console.log(`Successfully uploaded poll media: ${data.filePath}`);
+              toast.success(
+                `Successfully uploaded poll media: ${mediaItem.file?.name}`
+              );
               return data;
             })
             .catch((err) => {
@@ -431,17 +481,40 @@ export function CreatePollForm({
       }
 
       // Wait for all uploads to complete
-      await Promise.allSettled([
+      const uploadResults = await Promise.allSettled([
         ...optionUploadPromises,
         ...mediaUploadPromises,
       ]);
 
-      toast.success("Poll created successfully!");
+      // Check if any uploads failed
+      const failedUploads = uploadResults.filter(
+        (result) => result.status === "rejected"
+      );
+      const successfulUploads = uploadResults.filter(
+        (result) => result.status === "fulfilled" && result.value !== null
+      );
+
+      if (failedUploads.length > 0) {
+        console.warn(
+          `${failedUploads.length} uploads failed out of ${uploadResults.length} total`
+        );
+        toast.warning(
+          `Poll created successfully, but ${failedUploads.length} file uploads failed. You can try uploading them again later.`
+        );
+      } else if (uploadResults.length > 0) {
+        toast.success(
+          `Poll created successfully with ${successfulUploads.length} files uploaded!`
+        );
+      } else {
+        toast.success("Poll created successfully!");
+      }
+
       form.reset();
       if (onSuccess) {
         onSuccess();
       } else {
-        // Redirect to polls page if no onSuccess handler
+        // Redirect to dashboard page if no onSuccess handler
+        router.push("/dashboard");
       }
     } catch (error) {
       console.error("Error creating poll:", error);

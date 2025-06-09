@@ -88,7 +88,7 @@ export async function fetchPollWithOptions(
         // If user has voted, set it immediately to avoid inconsistency
         if (userVoted) {
           const userVote = votes.find((vote) => vote.user_id === userId);
-          if (userVote && userVote.option_id) {
+          if (userVote?.option_id) {
             pollWithResults.user_vote = userVote.option_id;
             console.log(
               `Setting user vote from votes array: ${userVote.option_id}`

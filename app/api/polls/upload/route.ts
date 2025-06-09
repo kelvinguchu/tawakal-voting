@@ -9,11 +9,14 @@ export async function POST(request: Request) {
     const { data: userData, error: userError } = await supabase.auth.getUser();
 
     if (userError || !userData.user) {
+      console.error("User authentication error:", userError);
       return NextResponse.json(
         { message: "Unauthorized: You must be logged in" },
         { status: 401 }
       );
     }
+
+    console.log("Authenticated user ID:", userData.user.id);
 
     // Verify admin role
     const { data: userDbData, error: userDbError } = await supabase
@@ -22,11 +25,39 @@ export async function POST(request: Request) {
       .eq("id", userData.user.id)
       .single();
 
-    if (userDbError || !userDbData || userDbData.role !== "admin") {
+    if (userDbError) {
+      console.error("Error fetching user role from database:", userDbError);
+      return NextResponse.json(
+        { message: "Database error: Could not verify user role" },
+        { status: 500 }
+      );
+    }
+
+    if (!userDbData || userDbData.role !== "admin") {
+      console.error("User role verification failed:", { userDbData });
       return NextResponse.json(
         { message: "Forbidden: Only administrators can upload files" },
         { status: 403 }
       );
+    }
+
+    console.log("User role verified as admin:", userDbData.role);
+
+    // Test RLS policy by checking if we can query the users table
+    try {
+      const { data: rlsTest, error: rlsError } = await supabase
+        .from("users")
+        .select("id, role")
+        .eq("id", userData.user.id)
+        .single();
+
+      if (rlsError) {
+        console.error("RLS test failed - cannot query users table:", rlsError);
+      } else {
+        console.log("RLS test passed - can query users table:", rlsTest);
+      }
+    } catch (error) {
+      console.error("RLS test exception:", error);
     }
 
     // Handle file upload - Parse the multipart form data
@@ -91,6 +122,14 @@ export async function POST(request: Request) {
       }
 
       // Add entry to option_media table
+      console.log("Attempting to insert option_media:", {
+        option_id: optionId,
+        media_type: "image",
+        storage_path: storagePath,
+        description,
+        user_id: userData.user.id,
+      });
+
       const { error: mediaError } = await supabase.from("option_media").insert({
         option_id: optionId,
         media_type: "image", // Option media is always image
@@ -100,14 +139,21 @@ export async function POST(request: Request) {
 
       if (mediaError) {
         console.error("Error adding option media:", mediaError);
+        console.error(
+          "Full error details:",
+          JSON.stringify(mediaError, null, 2)
+        );
+
         // If database entry fails, delete the uploaded file
         await supabase.storage.from("vote-media").remove([storagePath]);
-        return NextResponse.json(
-          {
-            message: `Failed to create media record: ${mediaError.message}`,
-          },
-          { status: 500 }
-        );
+
+        // Provide more specific error message based on error type
+        let errorMessage = `Failed to create media record: ${mediaError.message}`;
+        if (mediaError.message?.includes("row-level security policy")) {
+          errorMessage = `Database permission error: Unable to save file information. Please contact support.`;
+        }
+
+        return NextResponse.json({ message: errorMessage }, { status: 500 });
       }
     } else if (pollId) {
       // This is a poll media upload
@@ -133,6 +179,14 @@ export async function POST(request: Request) {
       }
 
       // Add entry to poll_media table
+      console.log("Attempting to insert poll_media:", {
+        poll_id: pollId,
+        media_type: mediaType,
+        storage_path: storagePath,
+        description,
+        user_id: userData.user.id,
+      });
+
       const { error: mediaError } = await supabase.from("poll_media").insert({
         poll_id: pollId,
         media_type: mediaType,
@@ -142,14 +196,21 @@ export async function POST(request: Request) {
 
       if (mediaError) {
         console.error("Error adding poll media:", mediaError);
+        console.error(
+          "Full error details:",
+          JSON.stringify(mediaError, null, 2)
+        );
+
         // If database entry fails, delete the uploaded file
         await supabase.storage.from("vote-media").remove([storagePath]);
-        return NextResponse.json(
-          {
-            message: `Failed to create media record: ${mediaError.message}`,
-          },
-          { status: 500 }
-        );
+
+        // Provide more specific error message based on error type
+        let errorMessage = `Failed to create media record: ${mediaError.message}`;
+        if (mediaError.message?.includes("row-level security policy")) {
+          errorMessage = `Database permission error: Unable to save file information. Please contact support.`;
+        }
+
+        return NextResponse.json({ message: errorMessage }, { status: 500 });
       }
     } else {
       return NextResponse.json(
@@ -161,7 +222,7 @@ export async function POST(request: Request) {
     }
 
     // Generate a public URL for the uploaded file
-    const { data: publicUrlData } = await supabase.storage
+    const { data: publicUrlData } = supabase.storage
       .from("vote-media")
       .getPublicUrl(storagePath);
 
