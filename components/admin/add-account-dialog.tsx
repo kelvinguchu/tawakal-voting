@@ -107,7 +107,7 @@ export function AddAccountDialog({
             Add New Account
           </DialogTitle>
           <DialogDescription>
-            Create a new user account for the voting system.
+            Create a new user account.
           </DialogDescription>
         </DialogHeader>
 

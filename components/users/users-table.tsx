@@ -356,7 +356,7 @@ export function UsersTable({
 
       {/* Confirmation Dialog */}
       <Dialog open={isConfirmOpen} onOpenChange={setIsConfirmOpen}>
-        <DialogContent className='w-[95vw] max-w-[400px] mx-4'>
+        <DialogContent className='sm:max-w-[400px]'>
           <DialogHeader>
             <DialogTitle className='text-tawakal-blue text-lg sm:text-xl'>
               Confirm User Status Change
@@ -394,13 +394,13 @@ export function UsersTable({
 
       {/* Edit User Dialog */}
       <Dialog open={isEditOpen} onOpenChange={setIsEditOpen}>
-        <DialogContent className='w-[95vw] max-w-[500px] mx-4 max-h-[90vh] overflow-y-auto'>
+        <DialogContent className='sm:max-w-[500px] max-h-[90vh] overflow-y-auto'>
           <DialogHeader>
             <DialogTitle className='text-tawakal-blue text-lg sm:text-xl'>
               Edit User
             </DialogTitle>
             <DialogDescription className='text-sm sm:text-base'>
-              Update user information. Changes will be saved immediately.
+              Update user information.
             </DialogDescription>
           </DialogHeader>
           <div className='grid gap-4 py-4'>
