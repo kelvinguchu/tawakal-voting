@@ -120,20 +120,20 @@ export default async function ProfilePage() {
         <TabsList className='bg-muted/30 p-0.5 grid grid-cols-3 w-full rounded-md mb-6'>
           <TabsTrigger
             value='account'
-            className='flex items-center text-sm px-4 py-2 rounded-md data-[state=active]:bg-tawakal-blue data-[state=active]:text-white'>
-            <UserCircle className='w-4 h-4 mr-2' />
+            className='flex items-center text-xs sm:text-sm px-2 sm:px-4 py-2 rounded-md data-[state=active]:bg-tawakal-blue data-[state=active]:text-white'>
+            <UserCircle className='w-4 h-4 mr-1 sm:mr-2' />
             Account
           </TabsTrigger>
           <TabsTrigger
             value='notifications'
-            className='flex items-center text-sm px-4 py-2 rounded-md data-[state=active]:bg-tawakal-green data-[state=active]:text-white'>
-            <Bell className='w-4 h-4 mr-2' />
-            Notifications
+            className='flex items-center text-xs sm:text-sm px-2 sm:px-4 py-2 rounded-md data-[state=active]:bg-tawakal-green data-[state=active]:text-white'>
+            <Bell className='w-4 h-4 mr-1 sm:mr-2' />
+            <span className='sm:inline'>Notifications</span>
           </TabsTrigger>
           <TabsTrigger
             value='security'
-            className='flex items-center text-sm px-4 py-2 rounded-md data-[state=active]:bg-tawakal-red data-[state=active]:text-white'>
-            <Shield className='w-4 h-4 mr-2' />
+            className='flex items-center text-xs sm:text-sm px-2 sm:px-4 py-2 rounded-md data-[state=active]:bg-tawakal-red data-[state=active]:text-white'>
+            <Shield className='w-4 h-4 mr-1 sm:mr-2' />
             Security
           </TabsTrigger>
         </TabsList>
