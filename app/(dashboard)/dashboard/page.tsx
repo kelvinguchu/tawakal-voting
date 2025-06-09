@@ -246,23 +246,23 @@ export default async function DashboardPage() {
         </div>
 
         <Tabs defaultValue='active' className='w-full'>
-          <TabsList className='bg-muted/30 p-0.5 flex space-x-1 rounded-md w-auto mb-8'>
+          <TabsList className='bg-muted/30 p-0.5 grid grid-cols-3 w-full rounded-md mb-6'>
             <TabsTrigger
               value='active'
               className='flex items-center text-sm px-4 py-2 rounded-md data-[state=active]:bg-tawakal-blue data-[state=active]:text-white'>
-              <Clock className='h-4 w-4 mr-1.5' />
+              <Clock className='h-4 w-4 mr-2' />
               Active
             </TabsTrigger>
             <TabsTrigger
               value='upcoming'
               className='flex items-center text-sm px-4 py-2 rounded-md data-[state=active]:bg-tawakal-green data-[state=active]:text-white'>
-              <Calendar className='h-4 w-4 mr-1.5' />
+              <Calendar className='h-4 w-4 mr-2' />
               Upcoming
             </TabsTrigger>
             <TabsTrigger
               value='closed'
               className='flex items-center text-sm px-4 py-2 rounded-md data-[state=active]:bg-tawakal-gold data-[state=active]:text-white'>
-              <TimerOff className='h-4 w-4 mr-1.5' />
+              <TimerOff className='h-4 w-4 mr-2' />
               Closed
             </TabsTrigger>
           </TabsList>
