@@ -72,17 +72,18 @@ export function MobileHeader({
         <div className='text-lg font-bold bg-gradient-to-r from-tawakal-green to-tawakal-blue bg-clip-text text-transparent'>
           Voting System
         </div>
-        <Button
-          variant='ghost'
-          size='icon'
+        <button
+          type='button'
           onClick={toggleMobileMenu}
-          aria-label='Toggle menu'>
+          aria-label='Toggle menu'
+          className='inline-flex items-center justify-center rounded-md p-2 text-muted-foreground hover:text-foreground hover:bg-muted transition-colors focus:outline-none focus:ring-2 focus:ring-tawakal-green focus:ring-offset-2 disabled:opacity-50 disabled:pointer-events-none h-10 w-10'
+        >
           {isMobileMenuOpen ? (
-            <X className='h-6 w-6' />
+            <X className='h-8 w-8' />
           ) : (
-            <Menu className='h-6 w-6' />
+            <Menu className='h-8 w-8' />
           )}
-        </Button>
+        </button>
       </div>
 
       {/* Mobile Navigation Sheet */}
