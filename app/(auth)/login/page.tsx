@@ -9,7 +9,7 @@ export const metadata: Metadata = {
 
 export default function LoginPage() {
   return (
-    <div className='w-[calc(100vw-2rem)] sm:w-full max-w-md p-4 sm:p-8 mx-auto'>
+    <div className='w-full max-w-md p-4 sm:p-8'>
       <div className='w-full text-center mb-6 sm:mb-8'>
         <div className='flex justify-center mb-3 sm:mb-4'>
           <Image
