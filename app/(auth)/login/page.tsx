@@ -13,12 +13,12 @@ export default function LoginPage() {
       <div className='w-full text-center mb-6 sm:mb-8'>
         <div className='flex justify-center mb-3 sm:mb-4'>
           <Image
-            src='/logo.png'
+            src='/logo-vertical.png'
             alt='Tawakal Express Logo'
             width={200}
             height={200}
             priority
-            className='mb-2 w-[140px] h-[50px] sm:w-[200px] sm:h-[70px]'
+            className='mb-2 w-[140px] h-[80px] sm:w-[200px] sm:h-[100px]'
           />
         </div>
         <h1 className='text-2xl md:text-2xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-tawakal-green via-tawakal-blue to-tawakal-red animate-gradient-x px-2'>

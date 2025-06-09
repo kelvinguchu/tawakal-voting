@@ -102,7 +102,7 @@ export default function Navbar({
               href='/dashboard'
               className='flex items-center space-x-2'>
               <Image
-                src='/logo.png'
+                src='/logo-horizontal.png'
                 alt='Tawakal Express Logo'
                 width={100}
                 height={100}
