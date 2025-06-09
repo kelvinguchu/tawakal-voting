@@ -9,6 +9,7 @@ import {
   BreadcrumbPage,
   BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb";
+import { LoadingLink } from "@/components/ui/loading-link";
 import { ChevronRight, Home, PlusCircle } from "lucide-react";
 
 export default async function CreatePollPage() {
@@ -39,10 +40,12 @@ export default async function CreatePollPage() {
       <Breadcrumb>
         <BreadcrumbList>
           <BreadcrumbItem>
-            <BreadcrumbLink href='/dashboard' className='flex items-center'>
-              <Home className='h-3 w-3 sm:h-4 sm:w-4 mr-1' />
-              <span className='hidden sm:inline'>Dashboard</span>
-              <span className='sm:hidden'>Home</span>
+            <BreadcrumbLink asChild>
+              <LoadingLink href='/dashboard' className='flex items-center'>
+                <Home className='h-3 w-3 sm:h-4 sm:w-4 mr-1' />
+                <span className='hidden sm:inline'>Dashboard</span>
+                <span className='sm:hidden'>Home</span>
+              </LoadingLink>
             </BreadcrumbLink>
           </BreadcrumbItem>
           <BreadcrumbSeparator>

@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { createClient } from "@/lib/supabase/client";
+import { useNavigation } from "@/components/providers/navigation-provider";
 import { User } from "@/lib/types/database";
 import { DashSidebar } from "@/components/layout/dash-sidebar";
 import { SidebarProvider } from "@/components/ui/sidebar";
@@ -14,6 +15,7 @@ export default function DashboardLayout({
 }>) {
   const [user, setUser] = useState<User | null>(null);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const { startLoading } = useNavigation();
   const supabase = createClient();
 
   useEffect(() => {
@@ -48,6 +50,7 @@ export default function DashboardLayout({
   }, []);
 
   const signOut = async () => {
+    startLoading(); // Start loading animation
     const { error } = await supabase.auth.signOut();
     if (!error) {
       window.location.href = "/login";

@@ -1,8 +1,9 @@
 "use client";
 
 import { useState } from "react";
-import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { LoadingLink } from "@/components/ui/loading-link";
+import { useNavigation } from "@/components/providers/navigation-provider";
 import { Menu, X, Home, Users, Plus, UserPlus, LogOut } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -31,6 +32,7 @@ export function MobileHeader({
 }: Readonly<MobileHeaderProps>) {
   const pathname = usePathname();
   const [isAddAccountDialogOpen, setIsAddAccountDialogOpen] = useState(false);
+  const { startLoading } = useNavigation();
 
   // Navigation items matching the sidebar
   const navItems = [
@@ -59,6 +61,7 @@ export function MobileHeader({
   };
 
   const handleSignOut = async () => {
+    startLoading(); // Start loading animation
     await signOut();
     toggleMobileMenu();
   };
@@ -100,10 +103,10 @@ export function MobileHeader({
                     asChild
                     className='w-full bg-tawakal-green hover:bg-tawakal-green/90 text-white'
                     onClick={handleNavClick}>
-                    <Link href='/admin/create-poll'>
+                    <LoadingLink href='/admin/create-poll'>
                       <Plus size={16} className='mr-2' />
                       Create Poll
-                    </Link>
+                    </LoadingLink>
                   </Button>
                 </div>
               )}
@@ -115,7 +118,7 @@ export function MobileHeader({
                 </h3>
                 <div className='space-y-1'>
                   {navItems.map((item) => (
-                    <Link
+                    <LoadingLink
                       key={item.href}
                       href={item.href}
                       onClick={handleNavClick}
@@ -127,7 +130,7 @@ export function MobileHeader({
                       )}>
                       <span className={item.color}>{item.icon}</span>
                       {item.name}
-                    </Link>
+                    </LoadingLink>
                   ))}
                 </div>
               </div>
@@ -157,7 +160,7 @@ export function MobileHeader({
                     {/* Admin Navigation */}
                     <div className='space-y-1'>
                       {adminNavItems.map((item) => (
-                        <Link
+                        <LoadingLink
                           key={item.href}
                           href={item.href}
                           onClick={handleNavClick}
@@ -169,7 +172,7 @@ export function MobileHeader({
                           )}>
                           <span className={item.color}>{item.icon}</span>
                           {item.name}
-                        </Link>
+                        </LoadingLink>
                       ))}
                     </div>
                   </div>

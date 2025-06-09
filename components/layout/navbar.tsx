@@ -4,6 +4,7 @@ import { useState } from "react";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { LoadingLink } from "@/components/ui/loading-link";
+import { useNavigation } from "@/components/providers/navigation-provider";
 import { Button } from "@/components/ui/button";
 import {
   Menu,
@@ -49,6 +50,7 @@ export default function Navbar({
 }: Readonly<NavbarProps>) {
   const pathname = usePathname();
   const [isAddAccountDialogOpen, setIsAddAccountDialogOpen] = useState(false);
+  const { startLoading } = useNavigation();
 
   // Navigation items matching the sidebar
   const navItems = [
@@ -77,6 +79,7 @@ export default function Navbar({
   };
 
   const handleSignOut = async () => {
+    startLoading(); // Start loading animation
     await signOut();
     setIsMobileMenuOpen(false);
   };
@@ -138,7 +141,10 @@ export default function Navbar({
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem
-                  onClick={() => signOut()}
+                  onClick={() => {
+                    startLoading(); // Start loading animation
+                    signOut();
+                  }}
                   className='text-tawakal-red focus:text-tawakal-red cursor-pointer'>
                   <LogOut className='h-4 w-4 mr-2' />
                   <span>Sign Out</span>
