@@ -65,9 +65,9 @@ export function LoginForm() {
   }
 
   return (
-    <Card className='w-full max-w-sm sm:max-w-md mx-4 sm:mx-auto bg-white/70 dark:bg-black/40 backdrop-blur-sm border-2 sm:border border-white/20 shadow-lg'>
+    <Card className='w-[calc(100vw-2rem)] max-w-sm sm:max-w-md mx-auto bg-white/70 dark:bg-black/40 backdrop-blur-sm border-2 sm:border border-white/20 shadow-lg'>
       <CardHeader className='space-y-1 text-center px-4 sm:px-6 pt-6 sm:pt-8'>
-        <h2 className='text-xl sm:text-2xl font-bold'>Sign In</h2>
+        <h2 className='text-lg sm:text-2xl font-bold'>Sign In</h2>
       </CardHeader>
       <CardContent className='px-4 sm:px-6'>
         {error && (
